@@ -14,3 +14,7 @@
 构建过程也很简单：我负责提需求、调布局，大部分代码由 AI 完成，再通过 GitHub Pages 和 Supabase 上线。从“我想要一个这样的工具”到真的能用，还是忍不住感慨一句：GPT 真牛逼。
 
 欢迎大家来逛逛、赏析，也欢迎提出建议！
+
+<img width="2206" height="1466" alt="image" src="https://github.com/user-attachments/assets/6278dd03-84b5-4645-b03c-814e01922791" />
+<img width="2685" height="1498" alt="image" src="https://github.com/user-attachments/assets/419a4d3f-1acb-4b41-857f-787d440aa583" />
+...

@@ -682,6 +682,8 @@ function ensureToday(){
       tasks: d.tasks.map(function(x){ return {text:x.text, done:!!x.done}; }),
       mood: d.mood || '',
       review: { good:d.review.good||'', improve:d.review.improve||'', tomorrow:d.review.tomorrow||'' },
+      areaNotes: Object.assign({}, d.areaNotes||{}),
+      personalSummary: d.personalSummary||'',
       total: total,
       done: done
     });
@@ -691,6 +693,8 @@ function ensureToday(){
   d.tasks = [];
   d.mood = '';
   d.review = { good:'', improve:'', tomorrow:'' };
+  d.areaNotes = {work:'',study:'',chance:'',skills:''};
+  d.personalSummary = '';
   save();
   return true;
 }

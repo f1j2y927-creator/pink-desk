@@ -384,6 +384,21 @@ body{background:radial-gradient(ellipse at 7% 0%,#b3ddfa 0%,transparent 58%),rad
 .tree-children>.tree-branch:only-child:after{display:none}
 .tree-children>.tree-branch .tree-node{background:linear-gradient(135deg,#e7f4ff,#f6e9fb);border-color:#afd2e9}
 @media(max-width:760px){.daily-area-grid{grid-template-columns:1fr}.paper-stage{grid-template-columns:1fr}.tree-canvas{justify-content:flex-start}}
+
+.calendar-layout{display:grid;grid-template-columns:minmax(260px,.85fr) minmax(0,1.3fr);gap:24px;align-items:start}
+.calendar-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 0}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.calendar-weekday{text-align:center;font-size:12px;color:var(--ink-2);padding:8px 0}
+.calendar-day{min-height:45px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid transparent;border-radius:12px;background:#f2f7fd;color:var(--ink);cursor:pointer;font:inherit}
+.calendar-day i{height:12px;line-height:12px;font-style:normal;font-size:8px;color:#558ebf}
+.calendar-day.has-entry{background:linear-gradient(135deg,#dfedff,#f7e6f1)}
+.calendar-day.selected{border-color:#5c96c8;box-shadow:0 0 0 1px #5c96c8}
+.calendar-day.is-today{font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.calendar-day:focus-visible{outline:2px solid #5c96c8;outline-offset:2px}
+.calendar-details{max-height:650px;overflow:auto;padding:0 12px;overflow-wrap:anywhere}
+.calendar-note{border-bottom:1px solid var(--line);padding:8px 0}
+.calendar-note h4{margin:6px 0;font-size:14px}.calendar-note p{white-space:pre-wrap;line-height:1.8;font-size:14px}
+@media(max-width:760px){.calendar-layout{grid-template-columns:1fr}.calendar-details{padding:0;max-height:none}}
 </style>
 </head>
 <body>
@@ -675,7 +690,7 @@ function ensureToday(){
   if(d.date === t) return false;
   var total = d.tasks.length;
   var done = d.tasks.filter(function(x){ return x.done; }).length;
-  var hasContent = total > 0 || d.review.good || d.review.improve || d.review.tomorrow || d.mood;
+  var hasContent = total > 0 || d.review.good || d.review.improve || d.review.tomorrow || d.mood || d.personalSummary || Object.keys(d.areaNotes||{}).some(function(k){return !!d.areaNotes[k];});
   if(hasContent){
     d.history.unshift({
       date: d.date,
@@ -687,7 +702,7 @@ function ensureToday(){
       total: total,
       done: done
     });
-    if(d.history.length > 90) d.history.length = 90;
+
   }
   d.date = t;
   d.tasks = [];
@@ -1138,19 +1153,28 @@ document.addEventListener('click', function(e){
 
     /* ---- 实习 ---- */
     case 'job-add':
-      askForm('添加实习机会', [
-        {key:'company', label:'公司', ph:'例如 某某科技'},
-        {key:'role', label:'岗位', ph:'例如 产品运营实习生'},
-        {key:'status', label:'状态', type:'select', value:'wish', options:JOB_ORDER.map(function(k){ return {v:k, t:JOB_STATUS[k].t}; })},
-        {key:'deadline', label:'截止日期（可不填）', type:'date'},
-        {key:'url', label:'岗位链接（可不填）', ph:'https://…'},
-        {key:'note', label:'备注（可不填）', type:'textarea', ph:'投递要求、面试时间、联系人…'}
-      ], function(d){
-        if(!d.company && !d.role){ toast('至少写个公司或岗位呀'); return; }
-        S.jobs.unshift({id:uid(), company:d.company, role:d.role, status:d.status||'wish', deadline:d.deadline, url:d.url, note:d.note, date:today()});
-        save(); renderRoute(); toast('已加入机会清单 🔍');
+    case 'job-edit': {
+      var editing=act==='job-edit'?S.jobs.find(function(j){return j.id===id;}):null;
+      if(act==='job-edit'&&!editing)break;
+      var job=editing||{};
+      askForm(editing?'编辑岗位':'添加岗位', [
+        {key:'category',label:'工作类别',type:'select',value:editing?(job.category||'private'):(S.ui.jobCategory||'civil'),options:jobCategories().map(function(c){return {v:c.id,t:c.name};})},
+        {key:'company',label:'单位 / 公司',value:job.company||'',ph:'填写招聘单位'},
+        {key:'role',label:'具体岗位',value:job.role||'',ph:'例如 综合管理岗、产品运营'},
+        {key:'status',label:'投递状态',type:'select',value:job.status||'wish',options:JOB_ORDER.map(function(k){return {v:k,t:JOB_STATUS[k].t};})},
+        {key:'deadline',label:'截止日期',type:'date',value:job.deadline||''},
+        {key:'url',label:'岗位链接',value:job.url||'',ph:'https://…'},
+        {key:'note',label:'岗位要求 / 进度备注',type:'textarea',value:job.note||'',ph:'岗位要求、进展、面试安排……'}
+      ],function(d){
+        if(!d.role){toast('请填写具体岗位名称');return;}
+        var record=Object.assign({},job,d,{id:job.id||uid(),date:job.date||today()});
+        if(editing)S.jobs=S.jobs.map(function(j){return j.id===job.id?record:j;});
+        else S.jobs.unshift(record);
+        S.ui.jobCategory=d.category;S.ui.jobFilter='all';
+        save();renderRoute();toast(editing?'岗位已更新':'岗位已添加');
       });
       break;
+    }
     case 'job-status': {
       var j = S.jobs.filter(function(x){ return x.id === id; })[0];
       if(!j) break;
@@ -1323,7 +1347,7 @@ function linkItem(l, sec){
 
 function linkPanel(sec, title, group, note, icon){
   var all = S.links[sec] || [];
-  var list = group ? all.filter(function(l){ return l.group === group || (sec === 'work' && !l.group); }) : all;
+  var list = group ? all.filter(function(l){ return l.group === group || (sec === 'chance' && group === 'private' && !l.group) || (sec === 'work' && !l.group); }) : all;
   var items = list.map(function(l){ return linkItem(l, sec); }).join('');
   return '<div class="panel">' +
     '<div class="panel-h"><span class="dot"></span><h3>' + (icon ? icon + ' ' : '') + esc(title) + '</h3>' +
@@ -1633,6 +1657,7 @@ function jobCard(j){
       '<h3>' + esc(j.company || '未填公司') + (j.role ? ' · ' + esc(j.role) : '') + '</h3>' +
       '<span class="tag ' + (st.cls || 'gray') + '">' + st.t + '</span>' +
       '<div class="right">' +
+        '<button class="btn tiny" data-act="job-edit" data-id="'+j.id+'">编辑</button>' +
         '<button class="btn tiny ghost" data-act="job-status" data-id="' + j.id + '">切换状态</button>' +
         (j.url ? '<button class="btn tiny" data-act="job-open" data-id="' + j.id + '">打开岗位</button>' : '') +
         '<button class="icon-del" data-act="job-del" data-id="' + j.id + '">✕</button>' +
@@ -1918,25 +1943,31 @@ function renderWork(){
  var title=active==='paper'?'论文常用文档和网址':active==='teach'?'家教备课网址和文档':'自媒体常用网址和文档';
  sheetBody.innerHTML=tabs+'<div class="module-columns work-pair"><main>'+left+'</main><aside>'+linkPanel('work',title,group,'')+'</aside></div>';
 }
+
+function jobCategories(){return [
+ {id:'civil',name:'考公',icon:'🏛️'},{id:'institution',name:'事业单位',icon:'🏢'},
+ {id:'selection',name:'选调',icon:'🌱'},{id:'private',name:'私企',icon:'💼'},
+ {id:'state',name:'国企',icon:'🏭'},{id:'foreign',name:'外企',icon:'🌐'}
+];}
 function renderChance(){
- var cats=[
-  {id:'civil',name:'考公',icon:'🏛️'},{id:'institution',name:'事业单位',icon:'🏢'},
-  {id:'selection',name:'选调',icon:'🌱'},{id:'private',name:'私企',icon:'💼'},
-  {id:'state',name:'国企',icon:'🏭'},{id:'foreign',name:'外企',icon:'🌐'}
- ];
- if(!S.ui.jobCategory)S.ui.jobCategory='civil';
- var cat=S.ui.jobCategory;
- var links=S.links.chance||[];
- var had=false;links.forEach(function(l){if(!l.group){l.group='private';had=true;}});
- if(had)save();
- var tabs='<nav class="chips job-category-tabs">'+cats.map(function(c){return '<button class="chip '+(cat===c.id?'on':'')+'" data-act="job-category" data-val="'+c.id+'">'+c.icon+' '+c.name+'</button>';}).join('')+'</nav>';
- var cnt={all:S.jobs.length};JOB_ORDER.forEach(function(k){cnt[k]=S.jobs.filter(function(j){return j.status===k;}).length;});
- var filters='<div class="chips"><button class="chip '+((S.ui.jobFilter||'all')==='all'?'on':'')+'" data-act="job-filter" data-val="all">全部 '+cnt.all+'</button>'+
- JOB_ORDER.map(function(k){return '<button class="chip '+((S.ui.jobFilter||'all')===k?'on':'')+'" data-act="job-filter" data-val="'+k+'">'+JOB_STATUS[k].t+' '+cnt[k]+'</button>';}).join('')+'</div>';
- var list=S.jobs.filter(function(j){return (S.ui.jobFilter||'all')==='all'||j.status===S.ui.jobFilter;});
- var cards=list.length?list.map(jobCard).join(''):'<div class="empty">暂无求职记录，可通过下方入口添加常用网址。</div>';
- sheetBody.innerHTML=tabs+filters+'<section class="panel"><div class="panel-h"><span class="dot"></span><h3>'+cats.find(function(c){return c.id===cat;}).name+' · 求职网站</h3><div class="right"><button class="btn tiny" data-act="job-add">＋ 添加机会</button></div></div>'+
- linkPanel('chance',cats.find(function(c){return c.id===cat;}).name+'网站',cat,'可添加该类别常用招聘网站或资料入口。')+'</section>'+cards;
+ var cats=jobCategories(),cat=S.ui.jobCategory||'civil';
+ if(!cats.some(function(c){return c.id===cat;}))cat='civil';
+ S.ui.jobCategory=cat;
+ var name=cats.find(function(c){return c.id===cat;}).name;
+ var categoryJobs=S.jobs.filter(function(j){return (j.category||'private')===cat;});
+ var filter=S.ui.jobFilter||'all';
+ var cnt={all:categoryJobs.length};
+ JOB_ORDER.forEach(function(k){cnt[k]=categoryJobs.filter(function(j){return j.status===k;}).length;});
+ var tabs='<nav class="chips job-category-tabs" aria-label="工作类别">'+cats.map(function(c){
+  return '<button class="chip '+(cat===c.id?'on':'')+'" data-act="job-category" data-val="'+c.id+'">'+c.icon+' '+c.name+'</button>';
+ }).join('')+'</nav>';
+ var filters='<div class="chips"><button class="chip '+(filter==='all'?'on':'')+'" data-act="job-filter" data-val="all">全部 '+cnt.all+'</button>'+
+ JOB_ORDER.map(function(k){return '<button class="chip '+(filter===k?'on':'')+'" data-act="job-filter" data-val="'+k+'">'+JOB_STATUS[k].t+' '+cnt[k]+'</button>';}).join('')+'</div>';
+ var jobs=categoryJobs.filter(function(j){return filter==='all'||j.status===filter;});
+ var cards=jobs.length?jobs.map(jobCard).join(''):'<div class="empty">这个分类下还没有符合状态的岗位，点击“添加岗位”记录具体机会。</div>';
+ sheetBody.innerHTML=tabs+'<div class="module-columns work-pair"><main><section class="panel"><div class="panel-h"><span class="dot"></span><h3>'+name+' · 岗位机会</h3><div class="right"><button class="btn solid" data-act="job-add">＋ 添加岗位</button></div></div>'+filters+
+ '<p class="panel-note">岗位与状态数量只统计当前工作类别。旧版未分类岗位保留在“私企”，可点击编辑重新分类。</p></section>'+cards+
+ '</main><aside>'+linkPanel('chance',name+' · 求职网址与文档',cat,'为当前类别添加常用招聘网站和资料入口。')+'</aside></div>';
 }
 function renderFun(){
  var skills=Array.isArray(S.skills)?S.skills:[];
@@ -1964,6 +1995,74 @@ document.addEventListener('click',function(e){
  else{S.ui.jobCategory=el.dataset.val;save();renderChance();}
 });
 
+
+/* Calendar archive: history stays in the existing account-synced daily data. */
+var calendarMonth='',calendarSelected='';
+function dailyHasContent(d){
+ return !!(d && (d.personalSummary || d.mood ||
+  Object.keys(d.areaNotes||{}).some(function(k){return !!d.areaNotes[k];}) ||
+  (d.tasks||[]).length ||
+  Object.keys(d.review||{}).some(function(k){return !!d.review[k];})));
+}
+function calendarRecords(){
+ var result={};
+ (S.daily.history||[]).forEach(function(d){if(d.date&&!result[d.date])result[d.date]=d;});
+ result[S.daily.date||today()]=S.daily;
+ return result;
+}
+function renderCalendar(){
+ var host=document.getElementById('dailyCalendar');if(!host)return;
+ var records=calendarRecords();
+ if(!calendarMonth)calendarMonth=today().slice(0,7);
+ if(!calendarSelected)calendarSelected=today();
+ var y=Number(calendarMonth.slice(0,4)),m=Number(calendarMonth.slice(5,7));
+ var offset=(new Date(y,m-1,1).getDay()+6)%7,days=new Date(y,m,0).getDate();
+ var cells='';
+ for(var i=0;i<offset;i++)cells+='<span class="calendar-blank"></span>';
+ for(var day=1;day<=days;day++){
+  var key=calendarMonth+'-'+pad(day),has=dailyHasContent(records[key]);
+  cells+='<button class="calendar-day '+(has?'has-entry ':'')+(key===calendarSelected?'selected ':'')+
+   (key===today()?'is-today':'')+'" data-calendar-date="'+key+'" aria-pressed="'+(key===calendarSelected)+'" aria-label="'+key+(has?' 有记录':' 无记录')+'">'+day+
+   '<i aria-hidden="true">'+(has?'●':'')+'</i></button>';
+ }
+ host.innerHTML='<div class="panel-h"><span class="dot"></span><h3>🗓️ 每日记录汇总</h3><span class="tag">'+Object.keys(records).filter(function(k){return dailyHasContent(records[k]);}).length+' 天记录</span></div>'+
+ '<div class="calendar-layout"><div><div class="calendar-toolbar"><button class="btn tiny" data-calendar-month="-1" aria-label="上个月">←</button><b>'+y+' 年 '+m+' 月</b><button class="btn tiny" data-calendar-month="1" aria-label="下个月">→</button><button class="btn tiny" data-calendar-today>今天</button></div>'+
+ '<div class="calendar-grid">'+['一','二','三','四','五','六','日'].map(function(w){return '<b class="calendar-weekday">'+w+'</b>';}).join('')+cells+'</div>'+
+ '<p class="panel-note">带圆点的日期有记录，点击日期查看。历史随账号同步，支持导出备份。</p></div>'+
+ '<div id="calendarDetails" class="calendar-details"></div></div>';
+ renderCalendarDetails();
+}
+function renderCalendarDetails(){
+ var host=document.getElementById('calendarDetails');if(!host)return;
+ var d=calendarRecords()[calendarSelected];
+ var text='<h3>'+esc(calendarSelected)+' · 记录</h3>';
+ if(!dailyHasContent(d)){host.innerHTML=text+'<p class="empty">这一天还没有记录。</p>';return;}
+ text+=DAILY_AREAS.map(function(a){return '<section class="calendar-note"><h4>'+a.icon+' '+a.name+'</h4><p>'+esc((d.areaNotes||{})[a.id]||'未填写')+'</p></section>';}).join('');
+ text+='<section class="calendar-note"><h4>🌷 个人状态总结</h4><p>'+esc(d.personalSummary||'未填写')+'</p></section>';
+ if(d.mood)text+='<p>当日心情：'+esc(d.mood)+'</p>';
+ if((d.tasks||[]).length)text+='<h4>原有待办记录</h4><ul>'+d.tasks.map(function(t){return '<li>'+esc((t.done?'✓ ':'○ ')+t.text)+'</li>';}).join('')+'</ul>';
+ var review=d.review||{};
+ if(review.good||review.improve||review.tomorrow)text+='<section class="calendar-note"><h4>原有复盘记录</h4><p>'+esc([review.good?'做得好：'+review.good:'',review.improve?'可改进：'+review.improve:'',review.tomorrow?'明天重点：'+review.tomorrow:''].filter(Boolean).join('\n'))+'</p></section>';
+ host.innerHTML=text;
+}
+var dailyWithoutCalendar=renderDaily;
+renderDaily=function(){
+ ensureToday();
+ dailyWithoutCalendar();
+ var card=document.createElement('section');card.className='panel';card.id='dailyCalendar';
+ sheetBody.appendChild(card);renderCalendar();
+};
+document.addEventListener('click',function(e){
+ var el=e.target.closest('[data-calendar-date],[data-calendar-month],[data-calendar-today]');if(!el)return;
+ if(el.hasAttribute('data-calendar-date')){calendarSelected=el.dataset.calendarDate;}
+ else if(el.hasAttribute('data-calendar-today')){calendarSelected=today();calendarMonth=today().slice(0,7);}
+ else{var d=new Date(Number(calendarMonth.slice(0,4)),Number(calendarMonth.slice(5,7))-1+Number(el.dataset.calendarMonth),1);calendarMonth=d.getFullYear()+'-'+pad(d.getMonth()+1);}
+ renderCalendar();
+});
+document.addEventListener('input',function(e){
+ if(e.target.hasAttribute('data-daily-area')||e.target.hasAttribute('data-daily-summary'))renderCalendar();
+});
+
 /* ==================== 启动 ==================== */
 ensureToday();
 tick();
@@ -1988,7 +2087,7 @@ function cloudChanged(){
  clearTimeout(cloud.timer);cloud.timer=setTimeout(syncCloud,1500);
  cs('本机已保存，等待同步');
 }
-function paintCloud(){renderHome();renderRoute();}
+function paintCloud(){ensureToday();renderHome();renderRoute();}
 async function syncCloud(forcePull){
  if(!cloud.ready||cloud.busy||!cloud.user)return;
  cloud.busy=true;var epoch=cloud.epoch, user=cloud.user.id;
@@ -1999,9 +2098,9 @@ async function syncCloud(forcePull){
   if(epoch!==cloud.epoch)return;
   var row=r.data;
   if(forcePull || !cloud.dirty){
-   if(row){S=row.data;store.setItem(KEY,JSON.stringify(S));cloud.version=row.version;paintCloud();}
+   if(row){S=row.data;store.setItem(KEY,JSON.stringify(S));cloud.version=row.version;}
    else cloud.version=null;
-   cloud.dirty=false;store.removeItem(dirtyKey());
+   cloud.dirty=false;store.removeItem(dirtyKey());paintCloud();
   }else{
    if(row && row.version!==cloud.version){cs('存在不同版本：请先导出备份，再选择使用云端版本');return;}
    var snapshot=JSON.stringify(S),next=(cloud.version||0)+1;

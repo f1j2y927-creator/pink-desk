@@ -1744,7 +1744,7 @@ document.getElementById('cloud-form').onsubmit=async function(e){
 document.getElementById('cloud-signup').onclick=async function(){
  if(!cloud.client)return;
  var form=document.getElementById('cloud-form');if(!form.reportValidity())return;
- var r=await cloud.client.auth.signUp({email:document.getElementById('cloud-email').value,password:document.getElementById('cloud-password').value});
+ var r=await cloud.client.auth.signUp({options:{emailRedirectTo:'https://f1j2y927-creator.github.io/pink-desk/'},email:document.getElementById('cloud-email').value,password:document.getElementById('cloud-password').value});
  document.getElementById('cloud-password').value='';
  if(r.error)cs(r.error.message);else if(r.data.session)await cloudSession(r.data.session);else cs('请查看确认邮件，确认后返回这里登录');
 };

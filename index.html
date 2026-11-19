@@ -321,6 +321,30 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
   .sheet-head{padding:11px 14px}
   .heat{grid-template-columns:repeat(14,1fr);gap:4px}
 }
+
+/* Blue opal theme */
+:root{--ink:#284b6c;--ink-2:#617e9b;--muted:#8ba5bd;--line:#dbeafa;--pink:#458ed6;--pink-2:#85b9ed;--pink-3:#b3d2f4;--soft:#f2f8ff;--shadow:0 12px 28px -18px #6499d1}
+body{background:radial-gradient(ellipse at 7% 0%,#b3ddfa 0%,transparent 58%),radial-gradient(ellipse at 98% 28%,#f4dbea 0%,transparent 52%),linear-gradient(145deg,#dcefff,#edf6ff 60%,#f7e8f3)}
+.hero{background:linear-gradient(120deg,#eef9ff,#d7ebff 62%,#f5e0f0);border-color:#d5e9fa}
+.hero::after{background:radial-gradient(circle,#b5d5f5,transparent 70%)}
+.panel,.tile{border-color:#dbeafa}.tile{background:linear-gradient(135deg,#edf8ff,#e0eeff 68%,#f3e5f2)}
+.btn,.chip.on{border-color:#bcd8f2;color:#366b9b;background:#edf6ff}
+.btn.solid{background:linear-gradient(110deg,#5ca4df,#9caee5,#e7b5d6);color:white}
+.panel-h .dot{background:#73acd9}.link .lic{background:#e9f3ff}
+.module-columns{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(280px,1fr);gap:20px;align-items:start}
+.module-columns>*{min-width:0}.module-columns .links{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.skill-tree{position:relative;min-height:360px;padding:22px 0 45px;display:grid;grid-template-columns:1fr 1fr;gap:24px 62px;align-content:start}
+.skill-tree:before{content:'';position:absolute;left:50%;top:10px;bottom:18px;width:12px;transform:translateX(-50%);border-radius:20px;background:linear-gradient(#58a6d5,#2b75a9,#81b9dd)}
+.skill-node{position:relative;background:linear-gradient(120deg,#e5f4ff,#f4e7f3);border:2px solid #a8cfe9;border-radius:24px;padding:18px;color:#285b82;text-align:left;cursor:pointer;min-height:84px}
+.skill-node:after{content:'';position:absolute;top:50%;width:33px;height:8px;background:#68a8d2}
+.skill-node:nth-child(odd):after{right:-34px;border-radius:0 12px 12px 0}
+.skill-node:nth-child(even):after{left:-34px;border-radius:12px 0 0 12px}
+.skill-node b,.skill-node small{display:block}.skill-node small{margin-top:7px;color:#6886a1}
+.portfolio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.portfolio-card{padding:10px;border:1px solid #dbeafa;border-radius:14px;overflow:hidden}
+.portfolio-card img{width:100%;height:130px;object-fit:contain;background:#eff6fd;border-radius:8px}
+@media(max-width:760px){.module-columns{grid-template-columns:1fr}.skill-tree{gap:20px 38px}.skill-node:after{width:20px}.skill-node:nth-child(odd):after{right:-22px}.skill-node:nth-child(even):after{left:-22px}.skill-node{padding:12px;font-size:13px}}
+
 </style>
 </head>
 <body>
@@ -350,18 +374,6 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
   </section>
 
   <div class="tiles" id="tiles">
-    <button class="tile" data-act="go" data-route="study" style="--c1:#ffd9e8;--c2:#fff0f7;--glow:#ffe4f1">
-      <div class="tile-top">
-        <div class="tile-icon">📚<span class="spark">✦</span></div>
-        <div>
-          <div class="tile-title">学习计划</div>
-          <div class="tile-sub">英语学习 · 读书计划</div>
-        </div>
-        <div class="tile-arrow">→</div>
-      </div>
-      <div class="tile-stats" id="stat-study"></div>
-    </button>
-
     <button class="tile" data-act="go" data-route="work" style="--c1:#e2d5ff;--c2:#f5efff;--glow:#ebe0ff">
       <div class="tile-top">
         <div class="tile-icon">✏️<span class="spark">✦</span></div>
@@ -372,6 +384,18 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
         <div class="tile-arrow">→</div>
       </div>
       <div class="tile-stats" id="stat-work"></div>
+    </button>
+
+    <button class="tile" data-act="go" data-route="study" style="--c1:#ffd9e8;--c2:#fff0f7;--glow:#ffe4f1">
+      <div class="tile-top">
+        <div class="tile-icon">📚<span class="spark">✦</span></div>
+        <div>
+          <div class="tile-title">学习计划</div>
+          <div class="tile-sub">英语学习 · 读书计划</div>
+        </div>
+        <div class="tile-arrow">→</div>
+      </div>
+      <div class="tile-stats" id="stat-study"></div>
     </button>
 
     <button class="tile" data-act="go" data-route="chance" style="--c1:#cfeaff;--c2:#eef8ff;--glow:#dff0ff">
@@ -390,8 +414,8 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
       <div class="tile-top">
         <div class="tile-icon">🎀<span class="spark">✦</span></div>
         <div>
-          <div class="tile-title">兴趣</div>
-          <div class="tile-sub">视频 · 游戏 · 社区 · 美妆 · 穿搭</div>
+          <div class="tile-title">技能树</div>
+          <div class="tile-sub">能力成长 · 技能分支 · 作品集</div>
         </div>
         <div class="tile-arrow">→</div>
       </div>
@@ -492,12 +516,13 @@ var JOB_STATUS = {
 var JOB_ORDER = ['wish','applied','interview','offer','rejected'];
 
 var TIPS = [
-  '今日份好运正在派送中',
-  '慢一点也没关系，方向对了就好',
-  '你已经比昨天厉害一点点啦',
-  '记得喝水，记得抬头看看云',
-  '把大目标切成小饼干，一口一口吃',
-  '今天也要好好抱抱自己'
+'行到水穷处，坐看云起时。——王维《终南别业》',
+'长风破浪会有时，直挂云帆济沧海。——李白《行路难·其一》',
+'山重水复疑无路，柳暗花明又一村。——陆游《游山西村》',
+'会当凌绝顶，一览众山小。——杜甫《望岳》',
+'莫听穿林打叶声，何妨吟啸且徐行。——苏轼《定风波》',
+'采菊东篱下，悠然见南山。——陶渊明《饮酒·其五》',
+'晴空一鹤排云上，便引诗情到碧霄。——刘禹锡《秋词·其一》'
 ];
 
 function mkLink(name, url, icon, mode, group){
@@ -508,6 +533,7 @@ function mkLink(name, url, icon, mode, group){
 function defaults(){
   return {
     v: 1,
+    skills: [],
     nickname: '',
     english: { days:{}, minutes:0 },
     books: [],
@@ -714,10 +740,10 @@ function renderHome(){
     (offer ? pill('Offer ' + offer + ' 个', 'warm') : '');
 
   /* 兴趣 */
-  var funCount = (S.links.fun || []).length;
+  var funCount = (S.skills || []).length;
   document.getElementById('stat-fun').innerHTML =
-    pill('收藏 ' + funCount + ' 个站点', 'warm') +
-    pill('5 个分类', 'lilac');
+    pill('已点亮 ' + funCount + ' 项技能', 'warm') +
+    pill('技能 · 作品集', 'lilac');
 
   /* 每日 */
   var t = S.daily.tasks.length, dn = S.daily.tasks.filter(function(x){ return x.done; }).length;
@@ -735,7 +761,7 @@ var ROUTES = {
   study: {t:'学习计划', e:'📚', sub:'英语学习 · 读书计划'},
   work:  {t:'工作产出', e:'✏️', sub:'论文撰写 · 家教备课 · 自媒体运营'},
   chance:{t:'机会搜寻', e:'🔍', sub:'实习岗位搜寻与投递追踪'},
-  fun:   {t:'兴趣',     e:'🎀', sub:'视频 · 游戏 · 社区 · 美妆 · 穿搭'},
+  fun:   {t:'技能树',     e:'🎀', sub:'能力成长 · 技能分支 · 作品集'},
   daily: {t:'每日计划与复盘', e:'✎', sub:'浅灰小字 · 每天一点点'}
 };
 
@@ -1664,6 +1690,108 @@ function renderDaily(){
     });
   }
 }
+
+
+/* Skills and portfolio */
+var activeSkill=null;
+function allSkills(){if(!Array.isArray(S.skills))S.skills=[];return S.skills;}
+function skillById(id){return allSkills().find(function(x){return x.id===id;});}
+function skillButton(x){return '<button class="skill-node" data-skill-open="'+esc(x.id)+'"><b>✦ '+esc(x.name)+'</b><small>'+((x.files||[]).length)+' 件作品 · 点击查看</small></button>';}
+renderFun=function(){
+ var skills=allSkills(),selected=skillById(activeSkill),body='';
+ if(selected){
+  var parent=skillById(selected.parent);
+  body='<div class="panel"><div class="panel-h"><h3>'+esc(selected.name)+'</h3><div class="right"><button class="btn tiny" data-skill-back="'+esc(parent?parent.id:'')+'">返回上级</button><button class="btn tiny" data-skill-rename="'+esc(selected.id)+'">重命名</button></div></div>'+
+   '<button class="btn" data-skill-add="'+esc(selected.id)+'">＋ 添加子技能</button> <button class="btn solid" data-skill-upload="'+esc(selected.id)+'">＋ 上传作品</button>'+
+   '<p class="panel-note">支持 PNG、JPG、WebP、GIF 和 PDF，单个文件不超过 10 MB。作品文件保存在私有云端空间。</p>'+
+   '<div class="skill-tree">'+skills.filter(function(x){return x.parent===selected.id;}).map(skillButton).join('')+'</div>'+
+   '<h3>作品集</h3><div class="portfolio-grid">'+(selected.files||[]).map(function(f){
+    return '<article class="portfolio-card">'+(f.type.indexOf('image/')===0?'<img data-portfolio-preview="'+esc(f.id)+'" alt="'+esc(f.name)+'">':'<div style="font-size:46px;text-align:center;padding:25px">📄</div>')+
+     '<p>'+esc(f.name)+'</p><button class="btn tiny" data-file-open="'+esc(f.id)+'">查看</button> <button class="btn tiny" data-file-remove="'+esc(f.id)+'">移除</button></article>';
+   }).join('')+'</div><p class="panel-note">导出备份包含作品索引，文件原件请另外保留。</p><button class="btn tiny" data-skill-remove="'+esc(selected.id)+'">删除此技能（需先移除作品与子技能）</button></div>';
+ }else{
+  body='<div class="panel"><div class="panel-h"><h3>我的技能树</h3><div class="right"><button class="btn solid" data-skill-add="">＋ 添加技能</button></div></div>'+
+  '<p class="panel-note">把擅长的事长成枝干。添加你的技能，点击节点继续细分，并收录作品。</p>'+
+  '<div class="skill-tree">'+skills.filter(function(x){return !x.parent;}).map(skillButton).join('')+'</div>'+
+  (!skills.length?'<div class="empty">从一项技能开始，例如 MATLAB、学术写作、摄影或设计。</div>':'')+'</div>';
+ }
+ sheetBody.innerHTML='<div class="module-columns"><main>'+body+'</main><aside>'+linkPanel('fun','常用网址与灵感收藏','','原有兴趣网址保留在这里，可以继续添加和整理。')+'</aside></div>';
+ if(selected&&cloud&&cloud.user)(selected.files||[]).filter(function(f){return f.type.indexOf('image/')===0;}).forEach(async function(f){
+  var r=await cloud.client.storage.from('pink-portfolio').createSignedUrl(f.path,600);
+  var el=sheetBody.querySelector('[data-portfolio-preview="'+f.id+'"]');
+  if(el&&r.data)el.src=r.data.signedUrl;
+ });
+};
+document.addEventListener('click',async function(e){
+ var el=e.target.closest('[data-skill-open],[data-skill-back],[data-skill-add],[data-skill-rename],[data-skill-remove],[data-skill-upload],[data-file-open],[data-file-remove]');
+ if(!el)return;
+ if(el.hasAttribute('data-skill-open')){activeSkill=el.dataset.skillOpen;renderFun();return;}
+ if(el.hasAttribute('data-skill-back')){activeSkill=el.dataset.skillBack||null;renderFun();return;}
+ if(el.hasAttribute('data-skill-add')){
+  var parent=el.dataset.skillAdd;
+  askForm(parent?'添加子技能':'添加技能',[{key:'name',label:'技能名称',ph:'输入你想记录的技能'}],function(d){
+   if(!d.name)return;allSkills().push({id:uid(),name:d.name,parent:parent||null,files:[]});save();renderFun();renderHome();
+  });return;
+ }
+ if(el.hasAttribute('data-skill-rename')){
+  var skill=skillById(el.dataset.skillRename);
+  askForm('修改技能名称',[{key:'name',label:'技能名称',value:skill.name}],function(d){if(d.name){skill.name=d.name;save();renderFun();}});return;
+ }
+ if(el.hasAttribute('data-skill-remove')){
+  var sk=skillById(el.dataset.skillRemove);
+  if((sk.files||[]).length||allSkills().some(function(x){return x.parent===sk.id;})){toast('请先移除该技能的作品和子技能');return;}
+  if(confirm('删除技能“'+sk.name+'”？')){S.skills=allSkills().filter(function(x){return x.id!==sk.id;});activeSkill=sk.parent;save();renderFun();renderHome();}return;
+ }
+ if(!cloud||!cloud.user||!cloud.ready){toast('请先登录云端账号');return;}
+ if(el.hasAttribute('data-skill-upload')){
+  var target=el.dataset.skillUpload,owner=cloud.user.id;
+  var input=document.createElement('input');input.type='file';input.accept='.png,.jpg,.jpeg,.webp,.gif,.pdf';input.multiple=true;
+  input.onchange=async function(){
+   el.disabled=true;
+   try{
+    for(var f of Array.from(input.files)){
+     if(!['image/png','image/jpeg','image/webp','image/gif','application/pdf'].includes(f.type)||f.size>10*1024*1024){toast('文件格式不支持或超过 10 MB：'+f.name);continue;}
+     var path=owner+'/'+crypto.randomUUID()+'.'+f.name.split('.').pop().toLowerCase();
+     toast('正在上传：'+f.name);
+     var r=await cloud.client.storage.from('pink-portfolio').upload(path,f,{contentType:f.type,upsert:false});
+     if(r.error)throw r.error;
+     if(!cloud.user||cloud.user.id!==owner)throw Error('账号已切换，作品未加入当前账号');
+     var skill=skillById(target);if(!skill)throw Error('技能已删除');
+     if(!skill.files)skill.files=[];
+     skill.files.push({id:uid(),name:f.name,path:path,type:f.type,size:f.size});save();
+    }
+    renderFun();toast('作品已添加；请等待云端同步完成');
+   }catch(err){toast('上传失败：'+err.message+'。首次使用请先运行作品存储 SQL。');}
+   finally{el.disabled=false;}
+  };input.click();return;
+ }
+ var currentSkill=skillById(activeSkill);
+ var file=currentSkill&&(currentSkill.files||[]).find(function(f){return f.id===(el.dataset.fileOpen||el.dataset.fileRemove);});
+ if(!file)return;
+ if(el.hasAttribute('data-file-open')){
+  var tab=window.open('about:blank','_blank');
+  if(tab)tab.opener=null;
+  var r=await cloud.client.storage.from('pink-portfolio').createSignedUrl(file.path,600);
+  if(r.error){if(tab)tab.close();toast(r.error.message);}
+  else if(tab)tab.location.href=r.data.signedUrl;
+  else toast('请允许弹出窗口后重试');
+ }else if(confirm('从作品集中移除？云端文件原件会保留，避免其他设备旧版本的引用失效。')){
+  currentSkill.files=currentSkill.files.filter(function(f){return f.id!==file.id;});save();renderFun();
+ }
+});
+function splitModule(){
+ var children=Array.from(sheetBody.children);
+ var index=children.findIndex(function(x){return x.querySelector('[data-act="link-add"]');});
+ if(index<0)return;
+ var grid=document.createElement('div');grid.className='module-columns';
+ var left=document.createElement('main'),right=document.createElement('aside');
+ children.forEach(function(x,i){(i<index?left:right).appendChild(x);});
+ grid.append(left,right);sheetBody.appendChild(grid);
+}
+var originalStudy=renderStudy,originalWork=renderWork,originalChance=renderChance;
+renderStudy=function(){originalStudy();splitModule();};
+renderWork=function(){originalWork();splitModule();};
+renderChance=function(){originalChance();splitModule();};
 
 /* ==================== 启动 ==================== */
 ensureToday();

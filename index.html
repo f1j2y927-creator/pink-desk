@@ -597,7 +597,7 @@ function load(){
 }
 
 function save(){
-  try{ store.setItem(KEY, JSON.stringify(S)); }
+  try{ store.setItem(KEY, JSON.stringify(S)); if(typeof cloudChanged === 'function' && cloud) cloudChanged(); }
   catch(e){ console.warn('保存失败', e); }
 }
 
@@ -1672,6 +1672,107 @@ setInterval(tick, 1000);
 elTip.textContent = TIPS[new Date().getDate() % TIPS.length];
 renderHome();
 document.getElementById('tiles').addEventListener('click', function(){ /* 占位：由委托处理 */ });
+
+
+/* Cloud sync: per-account cache, optimistic concurrency, explicit migration. */
+var cloud = {client:null,user:null,ready:false,dirty:false,busy:false,version:null,timer:null,epoch:0};
+var cloudBar=document.createElement('details');
+cloudBar.style.cssText='position:relative;z-index:5;margin:12px auto;padding:12px;max-width:1080px;background:#fff6fa;border:1px solid #ffd7e7;border-radius:16px';
+cloudBar.innerHTML='<summary>☁️ 云端同步 · <span id="cloud-status">正在连接</span></summary><div style="padding:12px"><form id="cloud-form"><input class="inp" id="cloud-email" type="email" placeholder="邮箱" required autocomplete="username"><input class="inp" id="cloud-password" type="password" placeholder="密码（至少8位）" minlength="8" required autocomplete="current-password"><button class="btn" type="submit">登录</button><button class="btn" type="button" id="cloud-signup">注册</button></form><div id="cloud-actions" hidden><button class="btn" id="cloud-sync">立即同步</button><button class="btn" id="cloud-pull">使用云端版本</button><button class="btn" id="cloud-import">导入此浏览器原有数据</button><button class="btn" id="cloud-out">退出登录</button></div><p>首次使用请注册并完成邮箱确认。离线修改会保留在本机；冲突时先通过设置导出备份，再选择版本。其他设备打开或切回网页时同步。</p></div>';
+document.body.insertBefore(cloudBar,document.body.firstChild);
+function cs(t){document.getElementById('cloud-status').textContent=t;}
+var guestKey=KEY;
+function dirtyKey(){return KEY+'-pending';}
+function cloudChanged(){
+ if(!cloud.user)return;
+ cloud.dirty=true;store.setItem(dirtyKey(),'1');
+ clearTimeout(cloud.timer);cloud.timer=setTimeout(syncCloud,1500);
+ cs('本机已保存，等待同步');
+}
+function paintCloud(){renderHome();renderRoute();}
+async function syncCloud(forcePull){
+ if(!cloud.ready||cloud.busy||!cloud.user)return;
+ cloud.busy=true;var epoch=cloud.epoch, user=cloud.user.id;
+ try{
+  cs('正在同步');
+  var r=await cloud.client.from('pink_desk').select('data,version').eq('user_id',user).maybeSingle();
+  if(r.error)throw r.error;
+  if(epoch!==cloud.epoch)return;
+  var row=r.data;
+  if(forcePull || !cloud.dirty){
+   if(row){S=row.data;store.setItem(KEY,JSON.stringify(S));cloud.version=row.version;paintCloud();}
+   else cloud.version=null;
+   cloud.dirty=false;store.removeItem(dirtyKey());
+  }else{
+   if(row && row.version!==cloud.version){cs('存在不同版本：请先导出备份，再选择使用云端版本');return;}
+   var snapshot=JSON.stringify(S),next=(cloud.version||0)+1;
+   var w=row
+    ? await cloud.client.from('pink_desk').update({data:JSON.parse(snapshot),version:next}).eq('user_id',user).eq('version',cloud.version).select('version')
+    : await cloud.client.from('pink_desk').insert({user_id:user,data:JSON.parse(snapshot),version:next}).select('version');
+   if(w.error)throw w.error;
+   if(epoch!==cloud.epoch)return;
+   if(!w.data.length){cs('版本冲突，请先导出备份');return;}
+   cloud.version=next;
+   cloud.dirty=JSON.stringify(S)!==snapshot;
+   if(!cloud.dirty)store.removeItem(dirtyKey());
+  }
+  store.setItem(KEY+'-version',JSON.stringify(cloud.version));
+  cs(cloud.dirty?'仍有本机修改，请再次同步':'已同步 · '+cloud.user.email);
+ }catch(e){cs('同步未完成：'+(e.message||e)+'（本机数据仍保留；请检查是否已运行建表 SQL）');}
+ finally{cloud.busy=false;}
+}
+async function cloudSession(session){
+ var user=session&&session.user;
+ if(user&&cloud.user&&user.id===cloud.user.id)return;
+ cloud.ready=false;cloud.epoch++;cloud.user=user;clearTimeout(cloud.timer);
+ KEY=user?guestKey+'-account-'+user.id:guestKey;
+ S=load();paintCloud();
+ document.getElementById('cloud-form').hidden=!!user;
+ document.getElementById('cloud-actions').hidden=!user;
+ if(!user){cs('未登录 · 仅保存在本机');return;}
+ cloud.version=JSON.parse(store.getItem(KEY+'-version')||'null');
+ cloud.dirty=store.getItem(dirtyKey())==='1';cloud.ready=true;
+ await syncCloud();
+}
+document.getElementById('cloud-form').onsubmit=async function(e){
+ e.preventDefault();if(!cloud.client)return;
+ cs('正在登录');
+ var r=await cloud.client.auth.signInWithPassword({email:document.getElementById('cloud-email').value,password:document.getElementById('cloud-password').value});
+ document.getElementById('cloud-password').value='';
+ if(r.error)cs(r.error.message);else await cloudSession(r.data.session);
+};
+document.getElementById('cloud-signup').onclick=async function(){
+ if(!cloud.client)return;
+ var form=document.getElementById('cloud-form');if(!form.reportValidity())return;
+ var r=await cloud.client.auth.signUp({email:document.getElementById('cloud-email').value,password:document.getElementById('cloud-password').value});
+ document.getElementById('cloud-password').value='';
+ if(r.error)cs(r.error.message);else if(r.data.session)await cloudSession(r.data.session);else cs('请查看确认邮件，确认后返回这里登录');
+};
+document.getElementById('cloud-sync').onclick=function(){syncCloud();};
+document.getElementById('cloud-pull').onclick=function(){if(confirm('使用云端版本替换当前本机内容？请先在设置中导出备份。'))syncCloud(true);};
+document.getElementById('cloud-import').onclick=function(){
+ if(!cloud.ready||cloud.busy)return;
+ var raw=store.getItem(guestKey);if(!raw){cs('此浏览器没有原有数据，请先通过设置导入备份');return;}
+ if(confirm('将此浏览器原有数据作为当前账号数据？已有内容会被替换，请先导出备份。')){
+ S=JSON.parse(raw);save();paintCloud();
+ }
+};
+document.getElementById('cloud-out').onclick=async function(){
+ if(cloud.busy){cs('请等待同步结束后退出');return;}
+ if(cloud.dirty&&!confirm('有尚未同步的修改，将留在此设备的账号缓存中。仍要退出？'))return;
+ var r=await cloud.client.auth.signOut();if(r.error)cs(r.error.message);else await cloudSession(null);
+};
+window.addEventListener('online',function(){syncCloud();});
+document.addEventListener('visibilitychange',function(){if(!document.hidden)syncCloud();});
+var sdk=document.createElement('script');
+sdk.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+sdk.onload=async function(){
+ cloud.client=window.supabase.createClient('https://elwacxlubrozbahukove.supabase.co','sb_publishable_ckc4FF6ZkmYdyoqujQ4E8A_s0yru9Mk');
+ cloud.client.auth.onAuthStateChange(function(event,session){setTimeout(function(){cloudSession(session);},0);});
+ var r=await cloud.client.auth.getSession();if(r.error)cs(r.error.message);else cloudSession(r.data.session);
+};
+sdk.onerror=function(){cs('云端组件加载失败，本机保存可继续使用');};
+document.head.appendChild(sdk);
 
 })();
 </script>

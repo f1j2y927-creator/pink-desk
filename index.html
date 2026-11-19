@@ -1174,7 +1174,7 @@ document.addEventListener('click', function(e){
         {key:'url', label:'链接（网址或本地文件路径）', ph:'https://… 或 file:///Users/…/笔记.docx'},
         {key:'icon', label:'图标（一个 emoji）', ph:'🔗', value:'🔗'},
         {key:'mode', label:'打开方式', type:'select', value:'embed', options:[{v:'embed',t:'在页面内嵌打开'},{v:'blank',t:'新窗口打开（本地文档选这个）'}]},
-        {key:'group', label:'网址分类', type:'select', value:(sec === 'work' ? (el.dataset.group || 'paper') : sec === 'fun' ? (el.dataset.group || 'video') : ''), options:(sec === 'work' ? [{v:'paper',t:'论文'},{v:'teach',t:'家教'},{v:'media',t:'自媒体'}] : sec === 'fun' ? FUN_GROUPS.map(function(g){ return {v:g.id, t:g.name}; }) : [{v:'',t:'默认'}])}
+        {key:'group', label:'网址分类', type:'select', value:(sec === 'work' ? (el.dataset.group || 'paper') : sec === 'chance' ? (el.dataset.group || 'civil') : sec === 'fun' ? (el.dataset.group || 'video') : ''), options:(sec === 'work' ? [{v:'paper',t:'论文'},{v:'teach',t:'家教'},{v:'media',t:'自媒体'}] : sec === 'chance' ? [{v:'civil',t:'考公'},{v:'institution',t:'事业单位'},{v:'selection',t:'选调'},{v:'private',t:'私企'},{v:'state',t:'国企'},{v:'foreign',t:'外企'}] : sec === 'fun' ? FUN_GROUPS.map(function(g){ return {v:g.id, t:g.name}; }) : [{v:'',t:'默认'}])}
       ], function(d){
         if(!d.name || !d.url){ toast('名称和链接都要填哦'); return; }
         S.links[sec].push({id:uid(), name:d.name, url:d.url, icon:d.icon||'🔗', mode:d.mode, group:(sec === 'fun' || sec === 'work' || sec === 'chance') ? d.group : ''});

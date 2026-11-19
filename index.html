@@ -363,6 +363,27 @@ body{background:radial-gradient(ellipse at 7% 0%,#b3ddfa 0%,transparent 58%),rad
 
 .hero{max-width:820px;margin-left:auto;margin-right:auto}
 @media(max-width:760px){.hero{max-width:480px}}
+
+.daily-area-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.daily-note{resize:vertical;min-height:130px}
+.paper-stages{display:grid;gap:10px}
+.paper-stage{display:grid;grid-template-columns:minmax(130px,.7fr) minmax(0,1.6fr);gap:12px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:16px;background:#fffafd}
+.paper-stage b{color:var(--ink-2)}
+.paper-title{font-size:17px;font-weight:700;max-width:260px}
+.job-category-tabs{flex-wrap:wrap}
+.tree-canvas{padding:30px 12px;display:flex;justify-content:center;overflow:auto;background:radial-gradient(ellipse at 50% 100%,#e5f4ff,transparent 70%);border-radius:24px}
+.tree-branch{position:relative;display:flex;flex-direction:column;align-items:center;padding:0 14px}
+.tree-node{position:relative;z-index:1;display:flex;align-items:center;gap:5px;padding:8px 10px;border-radius:25px;background:linear-gradient(135deg,#dff4e7,#fff8df);border:2px solid #a9d7b2;box-shadow:0 7px 14px #68a77b24}
+.tree-node .skill-node{border:0;background:none;color:#477653;font-weight:700;cursor:pointer}
+.tree-children{position:relative;display:flex;justify-content:center;align-items:flex-start;gap:8px;padding-top:32px}
+.tree-children:before{content:'';position:absolute;top:0;left:50%;height:22px;width:4px;border-radius:4px;background:#83bd8e}
+.tree-children>.tree-branch:before{content:'';position:absolute;top:0;left:50%;height:18px;width:3px;background:#83bd8e}
+.tree-children>.tree-branch:after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:#83bd8e}
+.tree-children>.tree-branch:first-child:after{left:50%}
+.tree-children>.tree-branch:last-child:after{right:50%}
+.tree-children>.tree-branch:only-child:after{display:none}
+.tree-children>.tree-branch .tree-node{background:linear-gradient(135deg,#e7f4ff,#f6e9fb);border-color:#afd2e9}
+@media(max-width:760px){.daily-area-grid{grid-template-columns:1fr}.paper-stage{grid-template-columns:1fr}.tree-canvas{justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -1156,7 +1177,7 @@ document.addEventListener('click', function(e){
         {key:'group', label:'网址分类', type:'select', value:(sec === 'work' ? (el.dataset.group || 'paper') : sec === 'fun' ? (el.dataset.group || 'video') : ''), options:(sec === 'work' ? [{v:'paper',t:'论文'},{v:'teach',t:'家教'},{v:'media',t:'自媒体'}] : sec === 'fun' ? FUN_GROUPS.map(function(g){ return {v:g.id, t:g.name}; }) : [{v:'',t:'默认'}])}
       ], function(d){
         if(!d.name || !d.url){ toast('名称和链接都要填哦'); return; }
-        S.links[sec].push({id:uid(), name:d.name, url:d.url, icon:d.icon||'🔗', mode:d.mode, group:(sec === 'fun' || sec === 'work') ? d.group : ''});
+        S.links[sec].push({id:uid(), name:d.name, url:d.url, icon:d.icon||'🔗', mode:d.mode, group:(sec === 'fun' || sec === 'work' || sec === 'chance') ? d.group : ''});
         save(); renderRoute(); toast('入口 +1 🔗');
       });
       break;
@@ -1298,7 +1319,7 @@ function linkItem(l, sec){
 
 function linkPanel(sec, title, group, note, icon){
   var all = S.links[sec] || [];
-  var list = group ? all.filter(function(l){ return l.group === group || (sec === 'work' && group === 'paper' && !l.group); }) : all;
+  var list = group ? all.filter(function(l){ return l.group === group || (sec === 'work' && !l.group); }) : all;
   var items = list.map(function(l){ return linkItem(l, sec); }).join('');
   return '<div class="panel">' +
     '<div class="panel-h"><span class="dot"></span><h3>' + (icon ? icon + ' ' : '') + esc(title) + '</h3>' +
@@ -1822,6 +1843,122 @@ renderWork=function(){
  '</main><aside>'+linkPanel('work',labels[tab]+' · 常用网址与文档',tab,'此处仅显示当前分类的网址；添加入口时可选择分类。')+'</aside></div>';
 };
 renderChance=function(){originalChance();splitModule();};
+
+
+/* ===== Customized planning, papers, tutoring and skill tree ===== */
+var DAILY_AREAS=[
+ {id:'work',name:'工作产出',icon:'✏️'},
+ {id:'study',name:'学习计划',icon:'📚'},
+ {id:'chance',name:'机会搜寻',icon:'🔎'},
+ {id:'skills',name:'技能树',icon:'🌳'}
+];
+function weekStamp(d){
+ d=new Date(d||new Date());var day=(d.getDay()+6)%7;d.setDate(d.getDate()-day+3);
+ var first=new Date(d.getFullYear(),0,4),week=1+Math.round(((d-first)/86400000-3+((first.getDay()+6)%7))/7);
+ return d.getFullYear()+'-W'+String(week).padStart(2,'0');
+}
+function ensureWeeklyTutor(){
+ if(!S.tutorWeekly)S.tutorWeekly={week:'',progress:'',students:'',history:[]};
+ var tw=S.tutorWeekly,w=weekStamp();
+ if(tw.week&&tw.week!==w){
+  tw.history=tw.history||[];
+  tw.history.unshift({week:tw.week,progress:tw.progress||'',students:tw.students||''});
+  if(tw.history.length>52)tw.history.length=52;
+  tw.progress='';tw.students='';
+ }
+ tw.week=w;
+}
+function renderDaily(){
+ var notes=S.daily.areaNotes||(S.daily.areaNotes={work:'',study:'',chance:'',skills:''});
+ sheetBody.innerHTML='<div class="daily-area-grid">'+DAILY_AREAS.map(function(a){
+  return '<section class="panel daily-area"><div class="panel-h"><span class="dot"></span><h3>'+a.icon+' '+a.name+'</h3></div>'+
+   '<textarea class="inp daily-note" rows="6" data-daily-area="'+a.id+'" placeholder="在这里记录今天的'+a.name+'……">'+esc(notes[a.id]||'')+'</textarea></section>';
+ }).join('')+'</div><section class="panel"><div class="panel-h"><span class="dot"></span><h3>🌷 个人状态总结</h3></div>'+
+ '<textarea class="inp" rows="4" data-daily-summary placeholder="写下今天的状态、感受或想记住的事……">'+esc(S.daily.personalSummary||'')+'</textarea>'+
+ '<p class="panel-note">内容自动保存并同步到你的账号。</p></section>';
+}
+function renderWork(){
+ ensureWeeklyTutor();
+ if(!S.paper.projects)S.paper.projects=[
+  {name:'论文1进度',notes:['','','','']},{name:'论文2进度',notes:['','','','']}
+ ];
+ var active=S.ui.workTab||'paper';
+ var labels={paper:'✏️ 论文',teach:'🍎 家教',media:'📣 自媒体'};
+ var tabs='<nav class="chips work-tabs">'+Object.keys(labels).map(function(k){
+  return '<button class="chip '+(active===k?'on':'')+'" data-act="custom-work-tab" data-val="'+k+'">'+labels[k]+'</button>';
+ }).join('')+'</nav>';
+ var left='';
+ if(active==='paper'){
+  left=S.paper.projects.map(function(p,pi){
+   if(!Array.isArray(p.notes))p.notes=['','','',''];
+   var stages=['摘要引言和结论','策略构建','竞争分析','实验'];
+   return '<section class="panel"><div class="panel-h"><span class="dot"></span><input class="inp paper-title" value="'+esc(p.name)+'" data-paper-title="'+pi+'" aria-label="论文名称"></div>'+
+    '<div class="paper-stages">'+stages.map(function(stage,si){
+     return '<label class="paper-stage"><b>'+stage+'</b><textarea class="inp" rows="2" data-paper-note="'+pi+':'+si+'" placeholder="记录这一环节的进度……">'+esc(p.notes[si]||'')+'</textarea></label>';
+    }).join('')+'</div></section>';
+  }).join('');
+ }else if(active==='teach'){
+  var hist=S.tutorWeekly.history||[];
+  left='<section class="panel"><div class="panel-h"><span class="dot"></span><h3>📘 本周家教记录 · '+esc(S.tutorWeekly.week)+'</h3></div>'+
+   '<label class="field"><span>学习进度</span><textarea class="inp" rows="5" data-tutor-field="progress" placeholder="记录本周教学内容与学习进展……">'+esc(S.tutorWeekly.progress)+'</textarea></label>'+
+   '<label class="field"><span>学生状态</span><textarea class="inp" rows="5" data-tutor-field="students" placeholder="记录学生状态、课堂表现及需关注事项……">'+esc(S.tutorWeekly.students)+'</textarea></label>'+
+   (hist.length?'<details class="panel-note"><summary>往周记录（'+hist.length+'）</summary>'+hist.slice(0,8).map(function(h){return '<p><b>'+esc(h.week)+'</b><br>学习进度：'+esc(h.progress)+'<br>学生状态：'+esc(h.students)+'</p>';}).join('')+'</details>':'')+
+   '<p class="panel-note">每周自动开启新记录，旧周内容会保留在历史记录中。</p></section>';
+ }else{
+  left='<section class="panel"><div class="panel-h"><span class="dot"></span><h3>📣 自媒体记录</h3></div>'+
+   '<label class="field"><span>已做选题</span><textarea class="inp" rows="5" data-media-note="done" placeholder="记录已完成的选题……">'+esc(S.mediaNotes&&S.mediaNotes.done||'')+'</textarea></label>'+
+   '<label class="field"><span>未做选题</span><textarea class="inp" rows="5" data-media-note="todo" placeholder="记录待完成的选题……">'+esc(S.mediaNotes&&S.mediaNotes.todo||'')+'</textarea></label>'+
+   '<label class="field"><span>分析</span><textarea class="inp" rows="5" data-media-note="analysis" placeholder="记录内容复盘和数据分析……">'+esc(S.mediaNotes&&S.mediaNotes.analysis||'')+'</textarea></label></section>';
+ }
+ var group=active;
+ var title=active==='paper'?'论文常用文档和网址':active==='teach'?'家教备课网址和文档':'自媒体常用网址和文档';
+ sheetBody.innerHTML=tabs+'<div class="module-columns work-pair"><main>'+left+'</main><aside>'+linkPanel('work',title,group,'')+'</aside></div>';
+}
+function renderChance(){
+ var cats=[
+  {id:'civil',name:'考公',icon:'🏛️'},{id:'institution',name:'事业单位',icon:'🏢'},
+  {id:'selection',name:'选调',icon:'🌱'},{id:'private',name:'私企',icon:'💼'},
+  {id:'state',name:'国企',icon:'🏭'},{id:'foreign',name:'外企',icon:'🌐'}
+ ];
+ if(!S.ui.jobCategory)S.ui.jobCategory='civil';
+ var cat=S.ui.jobCategory;
+ var links=S.links.chance||[];
+ var had=false;links.forEach(function(l){if(!l.group){l.group='private';had=true;}});
+ if(had)save();
+ var tabs='<nav class="chips job-category-tabs">'+cats.map(function(c){return '<button class="chip '+(cat===c.id?'on':'')+'" data-act="job-category" data-val="'+c.id+'">'+c.icon+' '+c.name+'</button>';}).join('')+'</nav>';
+ var cnt={all:S.jobs.length};JOB_ORDER.forEach(function(k){cnt[k]=S.jobs.filter(function(j){return j.status===k;}).length;});
+ var filters='<div class="chips"><button class="chip '+((S.ui.jobFilter||'all')==='all'?'on':'')+'" data-act="job-filter" data-val="all">全部 '+cnt.all+'</button>'+
+ JOB_ORDER.map(function(k){return '<button class="chip '+((S.ui.jobFilter||'all')===k?'on':'')+'" data-act="job-filter" data-val="'+k+'">'+JOB_STATUS[k].t+' '+cnt[k]+'</button>';}).join('')+'</div>';
+ var list=S.jobs.filter(function(j){return (S.ui.jobFilter||'all')==='all'||j.status===S.ui.jobFilter;});
+ var cards=list.length?list.map(jobCard).join(''):'<div class="empty">暂无求职记录，可通过下方入口添加常用网址。</div>';
+ sheetBody.innerHTML=tabs+filters+'<section class="panel"><div class="panel-h"><span class="dot"></span><h3>'+cats.find(function(c){return c.id===cat;}).name+' · 求职网站</h3><div class="right"><button class="btn tiny" data-act="job-add">＋ 添加机会</button></div></div>'+
+ linkPanel('chance',cats.find(function(c){return c.id===cat;}).name+'网站',cat,'可添加该类别常用招聘网站或资料入口。')+'</section>'+cards;
+}
+function renderFun(){
+ var skills=Array.isArray(S.skills)?S.skills:[];
+ function branch(x,depth){
+  var children=skills.filter(function(y){return y.parent===x.id;});
+  return '<div class="tree-branch depth-'+Math.min(depth,5)+'"><div class="tree-node"><button class="skill-node" data-skill-open="'+esc(x.id)+'">✦ '+esc(x.name)+'</button><button class="btn tiny" data-skill-add="'+esc(x.id)+'" title="从这里添加分叉">＋</button></div>'+
+   (children.length?'<div class="tree-children">'+children.map(function(c){return branch(c,depth+1);}).join('')+'</div>':'')+'</div>';
+ }
+ var roots=skills.filter(function(x){return !x.parent;});
+ sheetBody.innerHTML='<div class="module-columns"><main><section class="panel"><div class="panel-h"><span class="dot"></span><h3>🌳 我的技能树</h3><div class="right"><button class="btn solid" data-skill-add="">＋ 新技能分叉</button></div></div><p class="panel-note">每添加一项技能，树上就会长出一条新的分叉。</p>'+
+ '<div class="tree-canvas">'+(roots.length?roots.map(function(x){return branch(x,0);}).join(''):'<div class="empty">先添加一项技能，开始长出第一根枝干。</div>')+'</div></section></main><aside>'+linkPanel('fun','常用网址与灵感收藏','','')+'</aside></div>';
+}
+document.addEventListener('input',function(e){
+ var el=e.target;
+ if(el.hasAttribute('data-daily-area')){S.daily.areaNotes=S.daily.areaNotes||{};S.daily.areaNotes[el.dataset.dailyArea]=el.value;save();}
+ else if(el.hasAttribute('data-daily-summary')){S.daily.personalSummary=el.value;save();}
+ else if(el.hasAttribute('data-paper-title')){var p=S.paper.projects[+el.dataset.paperTitle];if(p){p.name=el.value;save();}}
+ else if(el.hasAttribute('data-paper-note')){var a=el.dataset.paperNote.split(':').map(Number),p=S.paper.projects[a[0]];if(p){p.notes=p.notes||[];p.notes[a[1]]=el.value;save();}}
+ else if(el.hasAttribute('data-tutor-field')){ensureWeeklyTutor();S.tutorWeekly[el.dataset.tutorField]=el.value;save();}
+ else if(el.hasAttribute('data-media-note')){S.mediaNotes=S.mediaNotes||{};S.mediaNotes[el.dataset.mediaNote]=el.value;save();}
+});
+document.addEventListener('click',function(e){
+ var el=e.target.closest('[data-act="custom-work-tab"],[data-act="job-category"]');if(!el)return;
+ if(el.dataset.act==='custom-work-tab'){S.ui.workTab=el.dataset.val;save();renderWork();}
+ else{S.ui.jobCategory=el.dataset.val;save();renderChance();}
+});
 
 /* ==================== 启动 ==================== */
 ensureToday();

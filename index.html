@@ -415,6 +415,8 @@ body{background:radial-gradient(ellipse at 7% 0%,#b3ddfa 0%,transparent 58%),rad
 .paper-project-card.active{border:2px solid #77a9d4;background:linear-gradient(120deg,#deefff,#f3e3f1)}
 .paper-stage-label{display:flex;gap:10px;align-items:center}.paper-stage-label input{width:20px;height:20px;accent-color:#6c9dcc}
 @media(max-width:760px){.paper-project-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.auto-summary{background:linear-gradient(135deg,#eef7ff,#fff4fa);border-radius:14px;padding:10px 14px;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere}.auto-summary ul{padding-left:20px;margin:5px 0}.auto-summary li{margin:8px 0;line-height:1.7;font-size:14px}
 </style>
 </head>
 <body>
@@ -694,7 +696,7 @@ function load(){
 }
 
 function save(){
-  try{ store.setItem(KEY, JSON.stringify(S)); if(typeof cloudChanged === 'function' && cloud) cloudChanged(); }
+  try{ if(activityBaseline && !activityRecording){activityRecording=true;try{ensureToday();captureAutoActivity();}finally{activityRecording=false;}} store.setItem(KEY, JSON.stringify(S)); if(typeof cloudChanged === 'function' && cloud) cloudChanged(); }
   catch(e){ console.warn('保存失败', e); }
 }
 
@@ -706,7 +708,7 @@ function ensureToday(){
   if(d.date === t) return false;
   var total = d.tasks.length;
   var done = d.tasks.filter(function(x){ return x.done; }).length;
-  var hasContent = total > 0 || d.review.good || d.review.improve || d.review.tomorrow || d.mood || d.personalSummary || Object.keys(d.areaNotes||{}).some(function(k){return !!d.areaNotes[k];});
+  var hasContent = total > 0 || d.review.good || d.review.improve || d.review.tomorrow || d.mood || d.personalSummary || hasAutoActivity(d) || Object.keys(d.areaNotes||{}).some(function(k){return !!d.areaNotes[k];});
   if(hasContent){
     d.history.unshift({
       date: d.date,
@@ -715,6 +717,7 @@ function ensureToday(){
       review: { good:d.review.good||'', improve:d.review.improve||'', tomorrow:d.review.tomorrow||'' },
       areaNotes: Object.assign({}, d.areaNotes||{}),
       personalSummary: d.personalSummary||'',
+      autoAreas: JSON.parse(JSON.stringify(d.autoAreas||{})),
       total: total,
       done: done
     });
@@ -726,6 +729,7 @@ function ensureToday(){
   d.review = { good:'', improve:'', tomorrow:'' };
   d.areaNotes = {work:'',study:'',chance:'',skills:''};
   d.personalSummary = '';
+  d.autoAreas = {};
   save();
   return true;
 }
@@ -2017,7 +2021,7 @@ document.addEventListener('click',function(e){
 /* Calendar archive: history stays in the existing account-synced daily data. */
 var calendarMonth='',calendarSelected='';
 function dailyHasContent(d){
- return !!(d && (d.personalSummary || d.mood ||
+ return !!(d && (d.personalSummary || d.mood || hasAutoActivity(d) ||
   Object.keys(d.areaNotes||{}).some(function(k){return !!d.areaNotes[k];}) ||
   (d.tasks||[]).length ||
   Object.keys(d.review||{}).some(function(k){return !!d.review[k];})));
@@ -2061,9 +2065,12 @@ function editableDailyRecord(date,create){
 function renderCalendarDetails(){
  var host=document.getElementById('calendarDetails');if(!host)return;
  var d=editableDailyRecord(calendarSelected,false)||{},date=esc(calendarSelected);
- var text='<h3>'+date+' · 记录</h3><p class="panel-note">直接编辑下方文字，自动保存；历史日期也可补写。</p>';
+ var text='<h3>'+date+' · 记录</h3><p class="panel-note">四个分类自动汇总当天保存的操作；你也可以补充文字，个人感悟自由编辑。</p>';
  text+=DAILY_AREAS.map(function(a){
-  return '<label class="calendar-note record-editor"><h4>'+a.icon+' '+a.name+'</h4><textarea class="inp" rows="3" data-record-area="'+a.id+'" data-record-date="'+date+'" placeholder="写下'+a.name+'……">'+esc((d.areaNotes||{})[a.id]||'')+'</textarea></label>';
+  var entries=Object.values((d.autoAreas||{})[a.id]||{}).sort(function(x,y){return x.time.localeCompare(y.time);});
+  return '<section class="calendar-note record-editor"><h4>'+a.icon+' '+a.name+'</h4>'+
+   '<div class="auto-summary">'+(entries.length?'<ul>'+entries.map(function(x){return '<li>'+esc(x.text)+'</li>';}).join('')+'</ul>':'<p class="panel-note">暂无自动记录。启用后在对应模块保存的操作会出现在这里。</p>')+'</div>'+
+   '<label class="field"><span>我的补充 / 感悟</span><textarea class="inp" rows="3" data-record-area="'+a.id+'" data-record-date="'+date+'" placeholder="自由补充你的感悟……">'+esc((d.areaNotes||{})[a.id]||'')+'</textarea></label></section>';
  }).join('');
  text+='<label class="calendar-note record-editor"><h4>🌷 个人状态总结</h4><textarea class="inp" rows="3" data-record-summary data-record-date="'+date+'" placeholder="记录个人状态与感受……">'+esc(d.personalSummary||'')+'</textarea></label><p class="panel-note" id="recordSaveStatus" aria-live="polite"></p>';
  if((d.tasks||[]).length)text+='<details><summary>原有待办记录</summary><ul>'+d.tasks.map(function(t){return '<li>'+esc((t.done?'✓ ':'○ ')+t.text)+'</li>';}).join('')+'</ul></details>';
@@ -2169,6 +2176,49 @@ document.addEventListener('input',function(e){
  if(button)button.textContent=el.value||'未命名论文';
 });
 
+
+/* Daily automatic activity summaries, with separate personal reflections. */
+var activityBaseline=null,activityRecording=false;
+function activitySnapshot(){
+ var result={},stages=['摘要引言和结论','策略构建','竞争分析','实验'];
+ function put(key,area,value,text){result[key]={area:area,value:JSON.stringify(value),text:text};}
+ ((S.paper||{}).projects||[]).forEach(function(p,i){
+  var name=p.name||('论文'+(i+1));
+  (p.notes||[]).forEach(function(note,j){put('paper-note-'+i+'-'+j,'work',note,name+' · '+(stages[j]||'环节')+'：'+(note||'已清空进度说明'));});
+  stages.forEach(function(stage,j){put('paper-done-'+i+'-'+j,'work',!!(p.completed||[])[j],name+' · '+stage+'：'+((p.completed||[])[j]?'已勾选完成':'已取消完成'));});
+ });
+ var tw=S.tutorWeekly||{};
+ ['progress','students'].forEach(function(k){put('tutor-'+k,'work',tw[k]||'','家教'+(k==='progress'?'学习进度':'学生状态')+'：'+(tw[k]||'已清空'));});
+ Object.keys(S.mediaNotes||{}).forEach(function(k){put('media-'+k,'work',S.mediaNotes[k],'自媒体'+({done:'已做选题',todo:'未做选题',analysis:'分析'}[k]||k)+'：'+(S.mediaNotes[k]||'已清空'));});
+ EN_TASKS.forEach(function(task){var checked=(((S.english||{}).days||{})[today()]||[]).includes(task.k);put('english-'+today()+'-'+task.k,'study',checked,task.t+'：'+(checked?'已打卡':'已取消打卡'));});
+ put('english-minutes','study',(S.english||{}).minutes||0,'英语累计学习时长更新为 '+((S.english||{}).minutes||0)+' 分钟');
+ (S.books||[]).forEach(function(b){put('book-'+b.id,'study',[b.title,b.read,b.total,b.notes],'《'+b.title+'》：已读 '+(b.read||0)+'/'+(b.total||0)+' 页'+((b.notes||[]).length?'，共 '+b.notes.length+' 条笔记':''));});
+ (S.jobs||[]).forEach(function(j){put('job-'+j.id,'chance',[j.company,j.role,j.status,j.deadline,j.note,j.category],(j.company||'')+' / '+(j.role||'岗位')+'：'+(JOB_STATUS[j.status]||JOB_STATUS.wish).t+(j.deadline?'，截止 '+j.deadline:'')+(j.note?'；'+j.note:''));});
+ (S.skills||[]).forEach(function(skill){put('skill-'+skill.id,'skills',[skill.name,skill.parent,(skill.files||[]).map(function(f){return [f.id,f.name];})],'技能「'+skill.name+'」：'+(skill.files||[]).length+' 件作品'+((skill.files||[]).length?'（'+skill.files.map(function(f){return f.name;}).join('、')+'）':''));});
+ return result;
+}
+function captureAutoActivity(){
+ var next=activitySnapshot(),before=activityBaseline;
+ if(!before){activityBaseline=next;return;}
+ var record=S.daily;
+ Object.keys(next).forEach(function(key){
+  var entry=next[key],old=before[key];
+  if(old&&old.value===entry.value)return;
+  if(!old&&(entry.value==='false'||entry.value==='""'||entry.value==='0'))return;
+  record.autoAreas=record.autoAreas||{};
+  var area=record.autoAreas[entry.area]||(record.autoAreas[entry.area]={});
+  area[key]={text:entry.text,time:new Date().toISOString()};
+ });
+ Object.keys(before).forEach(function(key){
+  if(next[key]||!(/^(book-|job-|skill-)/).test(key))return;
+  var entry=before[key];record.autoAreas=record.autoAreas||{};
+  var area=record.autoAreas[entry.area]||(record.autoAreas[entry.area]={});
+  area[key]={text:'已移除：'+entry.text,time:new Date().toISOString()};
+ });
+ activityBaseline=next;
+}
+function hasAutoActivity(d){return Object.keys((d||{}).autoAreas||{}).some(function(area){return Object.keys(d.autoAreas[area]||{}).length>0;});}
+
 /* ==================== 启动 ==================== */
 ensureToday();
 tick();
@@ -2193,7 +2243,7 @@ function cloudChanged(){
  clearTimeout(cloud.timer);cloud.timer=setTimeout(syncCloud,1500);
  cs('本机已保存，等待同步');
 }
-function paintCloud(){ensureToday();renderHome();renderRoute();}
+function paintCloud(){activityBaseline=activitySnapshot();ensureToday();renderHome();renderRoute();}
 async function syncCloud(forcePull){
  if(!cloud.ready||cloud.busy||!cloud.user)return;
  cloud.busy=true;var epoch=cloud.epoch, user=cloud.user.id;
@@ -2277,6 +2327,7 @@ sdk.onload=async function(){
 };
 sdk.onerror=function(){cs('云端组件加载失败，本机保存可继续使用');};
 document.head.appendChild(sdk);
+activityBaseline=activitySnapshot();
 
 })();
 </script>

@@ -421,6 +421,10 @@ body{background:radial-gradient(ellipse at 7% 0%,#b3ddfa 0%,transparent 58%),rad
 .work-todo-section{margin:22px 0}.work-todo-row{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(0,1.4fr);gap:12px;align-items:center;padding:12px;margin:12px 0;border:1px solid var(--line);border-radius:18px;background:#fffafd}
 .work-todo-label{display:flex;align-items:center;gap:8px;min-width:0}.work-todo-label input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:#76a5cc}.work-todo-label .inp{min-width:0}.todo-done{text-decoration:line-through;color:var(--muted)}.home-study-bubble{cursor:pointer;user-select:none;white-space:normal;text-align:left}.home-study-bubble:focus-visible{outline:2px solid #629ac4}
 @media(max-width:760px){.work-todo-row{grid-template-columns:1fr}}
+
+.editable-link{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center}
+.link-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:6px;padding-top:6px;border-top:1px solid #eff4fa}
+.link-actions .btn{padding:4px 10px;font-size:11px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -1222,19 +1226,8 @@ document.addEventListener('click', function(e){
       S.ui.jobFilter = el.dataset.val; save(); renderRoute(); break;
 
     /* ---- 链接 ---- */
-    case 'link-add':
-      askForm('添加一个入口', [
-        {key:'name', label:'名称', ph:'例如 我的英语听力网页'},
-        {key:'url', label:'链接（网址或本地文件路径）', ph:'https://… 或 file:///Users/…/笔记.docx'},
-        {key:'icon', label:'图标（一个 emoji）', ph:'🔗', value:'🔗'},
-        {key:'mode', label:'打开方式', type:'select', value:'embed', options:[{v:'embed',t:'在页面内嵌打开'},{v:'blank',t:'新窗口打开（本地文档选这个）'}]},
-        {key:'group', label:'网址分类', type:'select', value:(sec === 'work' ? (el.dataset.group || 'paper') : sec === 'chance' ? (el.dataset.group || 'civil') : sec === 'fun' ? (el.dataset.group || 'video') : ''), options:(sec === 'work' ? [{v:'paper',t:'论文'},{v:'teach',t:'家教'},{v:'media',t:'自媒体'}] : sec === 'chance' ? [{v:'civil',t:'考公'},{v:'institution',t:'事业单位'},{v:'selection',t:'选调'},{v:'private',t:'私企'},{v:'state',t:'国企'},{v:'foreign',t:'外企'}] : sec === 'fun' ? FUN_GROUPS.map(function(g){ return {v:g.id, t:g.name}; }) : [{v:'',t:'默认'}])}
-      ], function(d){
-        if(!d.name || !d.url){ toast('名称和链接都要填哦'); return; }
-        S.links[sec].push({id:uid(), name:d.name, url:d.url, icon:d.icon||'🔗', mode:d.mode, group:(sec === 'fun' || sec === 'work' || sec === 'chance') ? d.group : ''});
-        save(); renderRoute(); toast('入口 +1 🔗');
-      });
-      break;
+    case 'link-add': openLinkEditor(sec,null,el.dataset.group||''); break;
+    case 'link-edit': openLinkEditor(sec,id,''); break;
     case 'link-del': {
       var key1 = el.dataset.sec;
       S.links[key1] = S.links[key1].filter(function(x){ return x.id !== id; });
@@ -1361,14 +1354,10 @@ function doImport(){
 
 /* ==================== 通用：链接面板 ==================== */
 function linkItem(l, sec){
-  return '<div class="link" data-act="link-open" data-sec="' + sec + '" data-id="' + l.id + '" title="' + esc(l.url) + '">' +
-    '<div class="lic">' + (l.icon || '🔗') + '</div>' +
-    '<div style="min-width:0;flex:1">' +
-      '<div class="lname">' + esc(l.name) + '</div>' +
-      '<div class="ldesc">' + esc(host(l.url)) + '</div>' +
-    '</div>' +
-    '<button class="del" data-act="link-del" data-sec="' + sec + '" data-id="' + l.id + '">✕</button>' +
-  '</div>';
+  return '<div class="link editable-link" data-act="link-open" data-sec="'+esc(sec)+'" data-id="'+esc(l.id)+'" title="'+esc(l.url)+'">'+
+    '<div class="lic">'+esc(l.icon||'🔗')+'</div><div style="min-width:0;flex:1"><div class="lname">'+esc(l.name)+'</div><div class="ldesc">'+esc(host(l.url))+'</div></div>'+
+    '<div class="link-actions"><button class="btn tiny" data-act="link-edit" data-sec="'+esc(sec)+'" data-id="'+esc(l.id)+'" aria-label="编辑'+esc(l.name)+'">编辑</button>'+
+    '<button class="btn tiny ghost" data-act="link-del" data-sec="'+esc(sec)+'" data-id="'+esc(l.id)+'" aria-label="删除'+esc(l.name)+'">删除</button></div></div>';
 }
 
 function linkPanel(sec, title, group, note, icon){
@@ -2307,6 +2296,39 @@ document.addEventListener('click',function(e){
  }
 },true);
 document.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-home-en],[data-home-book]')){e.preventDefault();e.stopImmediatePropagation();e.target.click();}},true);
+
+
+function linkGroupOptions(sec){
+ if(sec==='work')return [{v:'',t:'通用（所有工作分类）'},{v:'paper',t:'论文'},{v:'teach',t:'家教'},{v:'media',t:'自媒体'}];
+ if(sec==='chance')return jobCategories().map(function(c){return {v:c.id,t:c.name};});
+ if(sec==='fun')return [{v:'',t:'通用'}].concat(FUN_GROUPS.map(function(g){return {v:g.id,t:g.name};}));
+ return [{v:'',t:'默认'}];
+}
+function openLinkEditor(sec,id,defaultGroup){
+ var links=S.links[sec];if(!Array.isArray(links))return;
+ var existing=id?links.find(function(l){return l.id===id;}):null;
+ if(id&&!existing){toast('未找到此入口，请刷新后重试');return;}
+ var link=existing||{},group=existing?(link.group||''):(defaultGroup||'');
+ if(sec==='chance'&&!group)group=existing?'private':(S.ui.jobCategory||'civil');
+ var options=linkGroupOptions(sec);
+ if(!options.some(function(o){return o.v===group;}))options.push({v:group,t:group||'默认'});
+ askForm(existing?'编辑网址 / 文档入口':'添加网址 / 文档入口',[
+  {key:'name',label:'入口名称',value:link.name||'',ph:'例如 我的教案资料'},
+  {key:'url',label:'网址或本地文件地址',value:link.url||'',ph:'https://… 或 file:///C:/…'},
+  {key:'icon',label:'图标（emoji）',value:link.icon||'🔗'},
+  {key:'mode',label:'打开方式',type:'select',value:link.mode||'embed',options:[{v:'embed',t:'在页面内打开'},{v:'blank',t:'新窗口打开'}]},
+  {key:'group',label:'所属分类',type:'select',value:group,options:options}
+ ],function(d){
+  if(!d.name||!d.url){toast('名称和地址不能为空，请重新填写');return;}
+  var values={name:d.name,url:d.url,icon:d.icon||'🔗',mode:d.mode,group:d.group};
+  if(existing){
+   var target=(S.links[sec]||[]).find(function(l){return l.id===id;});
+   if(!target){toast('此入口已不存在，未保存');return;}
+   Object.assign(target,values);
+  }else S.links[sec].push(Object.assign({id:uid()},values));
+  save();renderRoute();toast(existing?'入口已更新':'入口已添加');
+ });
+}
 
 /* ==================== 启动 ==================== */
 ensureToday();

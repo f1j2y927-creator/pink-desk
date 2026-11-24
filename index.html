@@ -425,6 +425,17 @@ body{background:radial-gradient(ellipse at 7% 0%,#b3ddfa 0%,transparent 58%),rad
 .editable-link{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center}
 .link-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:6px;padding-top:6px;border-top:1px solid #eff4fa}
 .link-actions .btn{padding:4px 10px;font-size:11px;white-space:nowrap}
+
+.todo-family{margin:14px 0;border:1px solid #d8e6f5;border-radius:20px;background:linear-gradient(130deg,#f5faff,#fff7fb);padding:10px}
+.todo-family>.work-todo-row{margin:0;border:0;background:transparent;padding:6px}
+.family-done{background:#f6f8fa;border-color:#e2e7ed}
+.subtodo-section{margin:8px 6px 4px 24px;padding-left:14px;border-left:2px solid #c3dcf1}
+.subtodo-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--ink-2);font-size:12px;margin:10px 0}
+.subtodo-row{display:flex;align-items:flex-start;gap:9px;margin:10px 0;padding:12px;background:#fff;border:1px solid #e0eafa;border-radius:16px}
+.subtodo-row>input[type=checkbox]{width:18px;height:18px;accent-color:#7daace;flex-shrink:0;margin-top:10px}
+.subtodo-fields{flex:1;min-width:0;display:grid;gap:7px}.subtodo-fields .inp{font-size:13px}
+.subtodo-done{background:#f5f7fa}
+@media(max-width:760px){.subtodo-section{margin-left:8px;padding-left:10px}.todo-family{padding:8px}}
 </style>
 </head>
 <body>
@@ -2178,7 +2189,7 @@ function activitySnapshot(){
  function put(key,area,value,text){result[key]={area:area,value:JSON.stringify(value),text:text};}
 
  ensureWorkTodos();
- function putTasks(prefix,label,list){(list||[]).forEach(function(t){put('worktodo-'+prefix+'-'+t.id,'work',[t.title,t.note,!!t.done],label+' · '+t.title+'：'+(t.done?'已完成':'待办')+(t.note?'；'+t.note:''));});}
+ function putTasks(prefix,label,list){(list||[]).forEach(function(t){put('worktodo-'+prefix+'-'+t.id,'work',[t.title,t.note,!!t.done],label+' · '+t.title+'：'+(t.done?'已完成':'待办')+(t.note?'；'+t.note:''));putTasks(prefix+'-sub-'+t.id,label+' / '+t.title,t.children||[]);});}
  S.paper.projects.forEach(function(p,i){putTasks('paper-'+i,p.name||('论文'+(i+1)),p.todos);});
  ['progress','students'].forEach(function(k){putTasks('teach-'+S.tutorWeekly.week+'-'+k,'家教'+(k==='progress'?'学习进度':'学生状态'),S.tutorWeekly.todoGroups[k]);});
  ['done','todo','analysis'].forEach(function(k){putTasks('media-'+k,'自媒体'+({done:'已做选题',todo:'未做选题',analysis:'分析'}[k]),S.mediaTodos[k]);});
@@ -2233,14 +2244,36 @@ function todoList(group){
  if(group.indexOf('teach:')===0)return S.tutorWeekly.todoGroups[group.split(':')[1]];
  return S.mediaTodos[group.split(':')[1]];
 }
-function todoPanel(group,title){
- var items=todoList(group);
- return '<section class="work-todo-section"><div class="panel-h"><h3>'+esc(title)+'</h3><div class="right"><button class="btn tiny" data-work-todo-add="'+group+'">＋ 添加待办</button></div></div>'+
- (items.length?items.map(function(t){return '<div class="work-todo-row"><div class="work-todo-label"><input type="checkbox" data-work-todo-check="'+group+'" data-todo-id="'+esc(t.id)+'" '+(t.done?'checked':'')+' aria-label="完成待办">'+
- '<input class="inp '+(t.done?'todo-done':'')+'" data-work-todo-title="'+group+'" data-todo-id="'+esc(t.id)+'" value="'+esc(t.title)+'" aria-label="待办内容">'+
- '<button class="icon-del" data-work-todo-delete="'+group+'" data-todo-id="'+esc(t.id)+'" aria-label="删除待办">×</button></div>'+
- '<textarea class="inp" rows="2" data-work-todo-note="'+group+'" data-todo-id="'+esc(t.id)+'" placeholder="进展说明（可选）">'+esc(t.note||'')+'</textarea></div>';}).join(''):'<p class="empty">点击“添加待办”，写下要完成的事。</p>')+'</section>';
+
+function pendingFirst(list){
+ return (list||[]).map(function(t,i){return {task:t,index:i};}).sort(function(a,b){return Number(!!a.task.done)-Number(!!b.task.done)||a.index-b.index;}).map(function(x){return x.task;});
 }
+function setParentTodoDone(task,done){
+ task.done=done;(task.children||[]).forEach(function(child){child.done=done;});
+}
+function syncParentTodoDone(task){
+ if((task.children||[]).length)task.done=task.children.every(function(child){return child.done;});
+}
+function todoPanel(group,title){
+ var items=pendingFirst(todoList(group));
+ return '<section class="work-todo-section"><div class="panel-h"><h3>'+esc(title)+'</h3><div class="right"><button class="btn tiny" data-work-todo-add="'+group+'">＋ 添加待办</button></div></div>'+
+ '<p class="panel-note">可添加二级小待办；未完成项优先显示。勾选主待办会同时完成子项。</p>'+
+ (items.length?items.map(function(t){
+ var children=pendingFirst(t.children||[]),done=children.filter(function(c){return c.done;}).length;
+ return '<article class="todo-family '+(t.done?'family-done':'')+'"><div class="work-todo-row"><div class="work-todo-label"><input type="checkbox" data-work-todo-check="'+group+'" data-todo-id="'+esc(t.id)+'" '+(t.done?'checked':'')+' aria-label="完成主待办与子项">'+
+ '<input class="inp '+(t.done?'todo-done':'')+'" data-work-todo-title="'+group+'" data-todo-id="'+esc(t.id)+'" value="'+esc(t.title)+'" aria-label="待办内容">'+
+ '<button class="icon-del" data-work-todo-delete="'+group+'" data-todo-id="'+esc(t.id)+'" aria-label="删除主待办">×</button></div>'+
+ '<textarea class="inp" rows="2" data-work-todo-note="'+group+'" data-todo-id="'+esc(t.id)+'" placeholder="进展说明（可选）">'+esc(t.note||'')+'</textarea></div>'+
+ '<div class="subtodo-section"><div class="subtodo-heading"><span>二级小待办'+(children.length?' · '+done+'/'+children.length:'')+'</span><button class="btn tiny" data-subtodo-add="'+group+'" data-parent-id="'+esc(t.id)+'">＋ 小待办</button></div>'+
+ children.map(function(c){
+  return '<div class="subtodo-row '+(c.done?'subtodo-done':'')+'"><input type="checkbox" data-subtodo-check="'+group+'" data-parent-id="'+esc(t.id)+'" data-subtodo-id="'+esc(c.id)+'" '+(c.done?'checked':'')+' aria-label="完成小待办">'+
+  '<div class="subtodo-fields"><input class="inp '+(c.done?'todo-done':'')+'" value="'+esc(c.title)+'" data-subtodo-title="'+group+'" data-parent-id="'+esc(t.id)+'" data-subtodo-id="'+esc(c.id)+'" aria-label="小待办内容">'+
+  '<textarea class="inp" rows="2" data-subtodo-note="'+group+'" data-parent-id="'+esc(t.id)+'" data-subtodo-id="'+esc(c.id)+'" placeholder="小待办说明（可选）">'+esc(c.note||'')+'</textarea></div>'+
+  '<button class="icon-del" data-subtodo-delete="'+group+'" data-parent-id="'+esc(t.id)+'" data-subtodo-id="'+esc(c.id)+'" aria-label="删除小待办">×</button></div>';
+ }).join('')+'</div></article>';
+ }).join(''):'<p class="empty">点击“添加待办”，写下要完成的事。</p>')+'</section>';
+}
+
 renderWork=function(){
  ensureWeeklyTutor();ensureWorkTodos();
  var tab=S.ui.workTab||'paper',labels={paper:'✏️ 论文',teach:'🍎 家教',media:'📣 自媒体'};
@@ -2265,7 +2298,7 @@ document.addEventListener('click',function(e){
   askForm('添加待办',[{key:'title',label:'待办内容'},{key:'note',label:'进展说明（可选）',type:'textarea'}],function(d){if(!d.title)return;todoList(group).push({id:uid(),title:d.title,note:d.note||'',done:group==='media:done'});save();renderWork();renderHome();});
  }else{
   var list=todoList(el.dataset.workTodoDelete),index=list.findIndex(function(t){return t.id===el.dataset.todoId;});
-  if(index>=0&&confirm('删除这条待办？')){list.splice(index,1);save();renderWork();renderHome();}
+  if(index>=0&&confirm('删除这条待办及其二级小待办？')){list.splice(index,1);save();renderWork();renderHome();}
  }
 });
 document.addEventListener('input',function(e){
@@ -2277,7 +2310,7 @@ document.addEventListener('input',function(e){
 document.addEventListener('change',function(e){
  var el=e.target;if(!el.hasAttribute('data-work-todo-check'))return;
  var task=todoList(el.dataset.workTodoCheck).find(function(t){return t.id===el.dataset.todoId;});if(!task)return;
- task.done=el.checked;save();renderWork();renderHome();
+ setParentTodoDone(task,el.checked);save();renderWork();renderHome();
 });
 function homeLearningBubbles(){
  var checked=S.english.days[today()]||[];
@@ -2329,6 +2362,42 @@ function openLinkEditor(sec,id,defaultGroup){
   save();renderRoute();toast(existing?'入口已更新':'入口已添加');
  });
 }
+
+
+function locateSubtodo(el,group){
+ var parent=todoList(group).find(function(t){return t.id===el.dataset.parentId;});
+ return {parent:parent,child:parent&&(parent.children||[]).find(function(t){return t.id===el.dataset.subtodoId;})};
+}
+document.addEventListener('click',function(e){
+ var el=e.target.closest('[data-subtodo-add],[data-subtodo-delete]');if(!el)return;
+ var group=el.dataset.subtodoAdd||el.dataset.subtodoDelete,parent=locateSubtodo(el,group).parent;
+ if(!parent)return;
+ if(el.hasAttribute('data-subtodo-add')){
+  var parentId=parent.id;
+  askForm('添加二级小待办',[{key:'title',label:'小待办内容'},{key:'note',label:'说明（可选）',type:'textarea'}],function(d){
+   if(!d.title)return;
+   var currentParent=todoList(group).find(function(t){return t.id===parentId;});if(!currentParent)return;
+   currentParent.children=currentParent.children||[];
+   currentParent.children.push({id:uid(),title:d.title,note:d.note||'',done:false});
+   currentParent.done=false;save();renderWork();renderHome();
+  });
+ }else if(confirm('删除这条小待办？')){
+  parent.children=(parent.children||[]).filter(function(c){return c.id!==el.dataset.subtodoId;});
+  syncParentTodoDone(parent);save();renderWork();renderHome();
+ }
+});
+document.addEventListener('input',function(e){
+ var el=e.target,group=el.dataset.subtodoTitle||el.dataset.subtodoNote;if(!group)return;
+ var found=locateSubtodo(el,group);if(!found.child)return;
+ if(el.hasAttribute('data-subtodo-title'))found.child.title=el.value;else found.child.note=el.value;
+ save();
+});
+document.addEventListener('change',function(e){
+ var el=e.target,group=el.dataset.subtodoCheck;if(!group)return;
+ var found=locateSubtodo(el,group);if(!found.child)return;
+ found.child.done=el.checked;syncParentTodoDone(found.parent);
+ save();renderWork();renderHome();
+});
 
 /* ==================== 启动 ==================== */
 ensureToday();

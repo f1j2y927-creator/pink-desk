@@ -1962,7 +1962,9 @@ function renderDaily(){
 function renderWork(){
  ensureWeeklyTutor();
  if(!Array.isArray(S.paper.projects))S.paper.projects=[];
- while(S.paper.projects.length<4)S.paper.projects.push({name:'论文'+(S.paper.projects.length+1)+'进度',notes:['','','',''],completed:[]});
+ while(S.paper.projects.length<3)S.paper.projects.push({name:'论文'+(S.paper.projects.length+1)+'进度',notes:['','','',''],completed:[]});
+  if(S.paper.projects.length>3)S.paper.projects.splice(3);
+  if(S.paper.projects[2])S.paper.projects[2].name='我的学术笔记本';
 
  var active=S.ui.workTab||'paper';
  var labels={paper:'✏️ 论文',teach:'🍎 家教',media:'📣 自媒体'};
@@ -2260,9 +2262,19 @@ function hasAutoActivity(d){return Object.keys((d||{}).autoAreas||{}).some(funct
 
 
 /* Shared work to-dos with backward-compatible text migration. */
+function normalizeAcademicNotebook(){
+ if(!Array.isArray(S.paper.projects))S.paper.projects=[];
+ while(S.paper.projects.length<3)S.paper.projects.push({name:'论文'+(S.paper.projects.length+1)+'进度',notes:[],completed:[]});
+ var changed=false;
+ if(S.paper.projects.length>3){S.paper.projects.splice(3);changed=true;}
+ if(S.paper.projects[2]&&S.paper.projects[2].name!=='我的学术笔记本'){S.paper.projects[2].name='我的学术笔记本';changed=true;}
+ return changed;
+}
 function ensureWorkTodos(){
  if(!Array.isArray(S.paper.projects))S.paper.projects=[];
- while(S.paper.projects.length<4)S.paper.projects.push({name:'论文'+(S.paper.projects.length+1)+'进度',notes:[],completed:[]});
+ while(S.paper.projects.length<3)S.paper.projects.push({name:'论文'+(S.paper.projects.length+1)+'进度',notes:[],completed:[]});
+ if(S.paper.projects.length>3)S.paper.projects.splice(3);
+ if(S.paper.projects[2])S.paper.projects[2].name='我的学术笔记本';
  var stages=['摘要引言和结论','策略构建','竞争分析','实验'];
  S.paper.projects.forEach(function(p,pi){
   if(!Array.isArray(p.todos))p.todos=stages.map(function(title,i){return {id:'legacy-paper-'+pi+'-'+i,title:title,note:(p.notes||[])[i]||'',done:!!(p.completed||[])[i]};});
@@ -2338,7 +2350,9 @@ function openPaperNoteEditor(index,id){
  modal.hidden=false;modalSubmit=null;setTimeout(function(){var x=document.getElementById('paper-note-title');if(x)x.focus();},50);
 }
 renderWork=function(){
+ var academicNotebookChanged=normalizeAcademicNotebook();
  ensureWeeklyTutor();ensureWorkTodos();
+ if(academicNotebookChanged)save();
  var tab=S.ui.workTab||'paper',labels={paper:'✏️ 论文',teach:'🍎 家教',media:'📣 自媒体'};
  if(!labels[tab])tab='paper';
  var nav='<nav class="chips work-tabs">'+Object.keys(labels).map(function(k){return '<button class="chip '+(tab===k?'on':'')+'" data-act="custom-work-tab" data-val="'+k+'">'+labels[k]+'</button>';}).join('')+'</nav>',left='';

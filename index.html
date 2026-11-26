@@ -416,6 +416,21 @@ body{background:radial-gradient(ellipse at 7% 0%,#b3ddfa 0%,transparent 58%),rad
 .paper-stage-label{display:flex;gap:10px;align-items:center}.paper-stage-label input{width:20px;height:20px;accent-color:#6c9dcc}
 @media(max-width:760px){.paper-project-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+/* Paper notebook */
+.paper-notebook{background:#fff;border:1px solid #e8edf2;border-radius:24px;padding:22px;box-shadow:0 12px 30px -24px rgba(45,65,85,.35);color:#252b33}
+.paper-notebook-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}.paper-notebook-head h2{font-size:27px;line-height:1.2;margin:0;color:#20252c}
+.paper-notebook-count{font-size:13px;color:#8a929b;margin-top:7px}.paper-notebook-search{width:min(260px,100%);position:relative}
+.paper-notebook-search input{width:100%;border:1px solid #e6e9ed;border-radius:999px;background:#f8f9fa;padding:10px 14px 10px 36px;font:inherit;font-size:13px;outline:none}
+.paper-notebook-search:before{content:'⌕';position:absolute;left:14px;top:5px;font-size:23px;color:#8b929a}
+.paper-notebook-cats{display:flex;gap:8px;overflow-x:auto;padding:17px 0 10px;scrollbar-width:thin}.paper-notebook-cats button{white-space:nowrap;border:0;border-radius:999px;background:#f3f4f6;color:#535b65;padding:9px 15px;font:inherit;font-size:13px;cursor:pointer}
+.paper-notebook-cats button.active{background:#e8eaed;color:#20252c;font-weight:800}.paper-notebook-section{margin-top:18px}.paper-notebook-section h3{font-size:16px;margin:0 0 10px;color:#353c44}
+.paper-note-card{display:flex;align-items:center;gap:12px;padding:15px 4px;border-bottom:1px solid #edf0f2;cursor:pointer;min-width:0}.paper-note-card:hover{background:#fafbfc}
+.paper-note-main{min-width:0;flex:1}.paper-note-title{font-size:16px;font-weight:750;color:#252b33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.paper-note-meta{font-size:12px;color:#8a929b;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.paper-note-category{font-size:11px;color:#7b858f;background:#f1f3f5;border-radius:5px;padding:4px 7px;flex:none}
+.paper-note-pin{font-size:12px;color:#9b7b54;flex:none}.paper-note-empty{padding:32px 12px;text-align:center;color:#929aa3;font-size:13px}
+.paper-notebook-add{position:sticky;bottom:18px;margin:18px 0 0 auto;width:58px;height:58px;border:0;border-radius:50%;background:#a7e86e;color:#fff;font-size:38px;line-height:1;box-shadow:0 8px 22px rgba(110,170,70,.25);cursor:pointer;display:grid;place-items:center}
+.paper-note-editor{display:flex;flex-direction:column;gap:11px}.paper-note-editor textarea{min-height:230px;line-height:1.8}.paper-note-editor .editor-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.paper-notebook{padding:17px;border-radius:19px}.paper-notebook-search{width:100%}.paper-note-editor .editor-meta{grid-template-columns:1fr}}
 .auto-summary{background:linear-gradient(135deg,#eef7ff,#fff4fa);border-radius:14px;padding:10px 14px;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere}.auto-summary ul{padding-left:20px;margin:5px 0}.auto-summary li{margin:8px 0;line-height:1.7;font-size:14px}
 
 .work-todo-section{margin:22px 0}.work-todo-row{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(0,1.4fr);gap:12px;align-items:center;padding:12px;margin:12px 0;border:1px solid var(--line);border-radius:18px;background:#fffafd}
@@ -2274,23 +2289,54 @@ function todoPanel(group,title){
  }).join(''):'<p class="empty">点击“添加待办”，写下要完成的事。</p>')+'</section>';
 }
 
+function paperNoteCategoryList(){return ['全部笔记','研究思路','证明过程','实验记录','待解决问题'];}
+function paperNoteDate(n){return String(n.updatedAt||n.createdAt||new Date().toISOString()).slice(0,10).replace(/-/g,'/');}
+var paperNoteFilter={},paperNoteQuery={};
+function renderPaperNotebook(index,p){
+ p.notesList=Array.isArray(p.notesList)?p.notesList:[];
+ var notes=p.notesList.slice().sort(function(a,b){return Number(!!b.pinned)-Number(!!a.pinned)||String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});
+ var cats=paperNoteCategoryList(),active=paperNoteFilter[index]||'全部笔记',query=paperNoteQuery[index]||'';
+ var filtered=notes.filter(function(n){return (active==='全部笔记'||n.category===active)&&((n.title||'')+' '+(n.body||'')).toLowerCase().indexOf(query.toLowerCase())>=0;});
+ var pinned=filtered.filter(function(n){return n.pinned;}),others=filtered.filter(function(n){return !n.pinned;});
+ function card(n){var preview=(n.body||'').replace(/\s+/g,' ').trim();return '<article class="paper-note-card" data-paper-note-edit="'+index+'" data-note-id="'+esc(n.id)+'"><div class="paper-note-main"><div class="paper-note-title">'+esc(n.title||'无标题笔记')+'</div><div class="paper-note-meta">'+esc(paperNoteDate(n))+' · '+esc(preview.slice(0,58)||'暂无正文')+'</div></div><span class="paper-note-category">'+esc(n.category||'未分类')+'</span>'+(n.pinned?'<span class="paper-note-pin">置顶</span>':'')+'</article>';}
+ return '<section class="paper-notebook"><div class="paper-notebook-head"><div><h2>笔记</h2><div class="paper-notebook-count">'+notes.length+' 篇笔记 · '+esc(p.name||('论文'+(index+1)))+'</div></div><label class="paper-notebook-search"><input type="search" data-paper-note-search="'+index+'" value="'+esc(query)+'" placeholder="搜索笔记"></label></div><nav class="paper-notebook-cats">'+cats.map(function(c){return '<button type="button" class="'+(active===c?'active':'')+'" data-paper-note-category="'+index+'" data-category="'+esc(c)+'">'+esc(c)+'</button>';}).join('')+'</nav>'+
+ (pinned.length?'<section class="paper-notebook-section"><h3>置顶</h3>'+pinned.map(card).join('')+'</section>':'')+
+ '<section class="paper-notebook-section"><h3>'+(pinned.length?'其他笔记':'全部笔记')+'</h3>'+(others.length?others.map(card).join(''):'<div class="paper-note-empty">'+(notes.length?'没有符合条件的笔记':'还没有笔记，点击右下角 + 开始记录论文进展')+'</div>')+'</section><button type="button" class="paper-notebook-add" data-paper-note-new="'+index+'" aria-label="新增笔记">＋</button></section>';
+}
+function openPaperNoteEditor(index,id){
+ var p=S.paper.projects[index];if(!p)return;p.notesList=Array.isArray(p.notesList)?p.notesList:[];
+ var n=id?p.notesList.find(function(x){return x.id===id;}):null,cats=paperNoteCategoryList().slice(1);
+ modal.innerHTML='<div class="modal-card"><h3 class="modal-title">'+(n?'编辑笔记':'新增笔记')+'</h3><div class="paper-note-editor"><label class="fld"><span>标题</span><input class="inp" id="paper-note-title" maxlength="100" placeholder="给这篇笔记起个标题" value="'+esc(n&&n.title||'')+'"></label><div class="editor-meta"><label class="fld"><span>分类</span><select class="inp" id="paper-note-category">'+cats.map(function(c){return '<option value="'+c+'" '+((n&&n.category===c)||(!n&&c==='研究思路')?'selected':'')+'>'+c+'</option>';}).join('')+'</select></label><label class="fld"><span>置顶</span><select class="inp" id="paper-note-pinned"><option value="no" '+(!(n&&n.pinned)?'selected':'')+'>不置顶</option><option value="yes" '+(n&&n.pinned?'selected':'')+'>置顶笔记</option></select></label></div><label class="fld"><span>笔记内容</span><textarea class="inp" id="paper-note-body" placeholder="记录研究进展、证明思路、实验结果或待解决问题……">'+esc(n&&n.body||'')+'</textarea></label></div><div class="modal-foot">'+(n?'<button class="btn ghost" data-paper-note-remove="'+index+'" data-note-id="'+esc(n.id)+'">删除</button>':'')+'<button class="btn ghost" data-act="modal-close">取消</button><button class="btn solid" data-paper-note-save="'+index+'" data-note-id="'+esc(n&&n.id||'')+'">保存笔记</button></div></div>';
+ modal.hidden=false;modalSubmit=null;setTimeout(function(){var x=document.getElementById('paper-note-title');if(x)x.focus();},50);
+}
 renderWork=function(){
  ensureWeeklyTutor();ensureWorkTodos();
  var tab=S.ui.workTab||'paper',labels={paper:'✏️ 论文',teach:'🍎 家教',media:'📣 自媒体'};
  if(!labels[tab])tab='paper';
  var nav='<nav class="chips work-tabs">'+Object.keys(labels).map(function(k){return '<button class="chip '+(tab===k?'on':'')+'" data-act="custom-work-tab" data-val="'+k+'">'+labels[k]+'</button>';}).join('')+'</nav>',left='';
  if(tab==='paper'){
-  var index=Number(S.ui.paperProject)||0;if(!S.paper.projects[index])index=0;
-  var p=S.paper.projects[index],done=p.todos.filter(function(t){return t.done;}).length,pct=p.todos.length?Math.round(done/p.todos.length*100):0;
-  left='<section class="panel"><h3>我的论文</h3><div class="paper-project-tabs">'+S.paper.projects.map(function(project,i){return '<button class="paper-project-card '+(index===i?'active':'')+'" data-paper-select="'+i+'"><b>'+esc(project.name||'未命名论文')+'</b><small>'+project.todos.filter(function(t){return t.done;}).length+'/'+project.todos.length+' 待办完成</small></button>';}).join('')+'</div>'+
-   '<label class="field"><span>当前论文名称</span><input class="inp" data-paper-title="'+index+'" value="'+esc(p.name)+'"></label>'+
-   '<div class="bar-row"><div class="bar"><i style="width:'+pct+'%"></i></div><span class="pct">'+pct+'%</span></div>'+todoPanel('paper:'+index,'论文待办与进展')+'</section>';
- }else if(tab==='teach'){
+   var index=Number(S.ui.paperProject)||0;if(!S.paper.projects[index])index=0;
+   var p=S.paper.projects[index];if(!Array.isArray(p.todos))p.todos=[];
+   var projectTabs='<div class="paper-project-tabs">'+S.paper.projects.map(function(project,i){return '<button class="paper-project-card '+(index===i?'active':'')+'" data-paper-select="'+i+'"><b>'+esc(project.name||'未命名论文')+'</b><small>'+(i>=2?((project.notesList||[]).length+' 篇笔记'):(project.todos||[]).filter(function(t){return t.done;}).length+'/'+(project.todos||[]).length+' 待办完成')+'</small></button>';}).join('')+'</div>';
+   if(index>=2){left=projectTabs+renderPaperNotebook(index,p);}
+   else{var done=p.todos.filter(function(t){return t.done;}).length,pct=p.todos.length?Math.round(done/p.todos.length*100):0;
+    left='<section class="panel"><h3>我的论文</h3>'+projectTabs+'<label class="field"><span>当前论文名称</span><input class="inp" data-paper-title="'+index+'" value="'+esc(p.name)+'"></label><div class="bar-row"><div class="bar"><i style="width:'+pct+'%"></i></div><span class="pct">'+pct+'%</span></div>'+todoPanel('paper:'+index,'论文待办与进展')+'</section>';
+   }
+  }else if(tab==='teach'){
   left='<section class="panel"><h3>本周家教 · '+esc(S.tutorWeekly.week)+'</h3>'+todoPanel('teach:progress','学习进度')+todoPanel('teach:students','学生状态')+
    '<details><summary>往周记录</summary>'+((S.tutorWeekly.history||[]).map(function(h){var text=['学习进度：'+(h.progress||''),'学生状态：'+(h.students||'')];Object.keys(h.todoGroups||{}).forEach(function(k){text.push((k==='progress'?'学习进度':'学生状态')+'：');(h.todoGroups[k]||[]).forEach(function(t){text.push((t.done?'✓ ':'○ ')+t.title+(t.note?'：'+t.note:''));});});return '<p style="white-space:pre-wrap"><b>'+esc(h.week)+'</b><br>'+esc(text.join('\n'))+'</p>';}).join(''))+'</details></section>';
  }else left='<section class="panel"><h3>自媒体待办</h3>'+todoPanel('media:done','已做选题')+todoPanel('media:todo','未做选题')+todoPanel('media:analysis','分析')+'</section>';
  sheetBody.innerHTML=nav+'<div class="module-columns work-pair"><main>'+left+'</main><aside>'+linkPanel('work',tab==='teach'?'家教备课网址和文档':tab==='paper'?'论文常用文档和网址':'自媒体常用网址和文档',tab,'')+'</aside></div>';
 };
+document.addEventListener('click',function(e){
+ var el=e.target.closest('[data-paper-note-new],[data-paper-note-edit],[data-paper-note-category],[data-paper-note-save],[data-paper-note-remove]');if(!el)return;
+ if(el.hasAttribute('data-paper-note-new')){openPaperNoteEditor(+el.dataset.paperNoteNew,null);return;}
+ if(el.hasAttribute('data-paper-note-edit')){openPaperNoteEditor(+el.dataset.paperNoteEdit,el.dataset.noteId);return;}
+ if(el.hasAttribute('data-paper-note-category')){paperNoteFilter[+el.dataset.paperNoteCategory]=el.dataset.category;renderWork();return;}
+ if(el.hasAttribute('data-paper-note-save')){var i=+el.dataset.paperNoteSave,p=S.paper.projects[i],title=document.getElementById('paper-note-title').value.trim();if(!title){toast('请先填写笔记标题');return;}p.notesList=Array.isArray(p.notesList)?p.notesList:[];var id=el.dataset.noteId,n=id?p.notesList.find(function(x){return x.id===id;}):null,now=new Date().toISOString();if(!n){n={id:uid(),createdAt:now};p.notesList.unshift(n);}n.title=title;n.body=document.getElementById('paper-note-body').value.trim();n.category=document.getElementById('paper-note-category').value;n.pinned=document.getElementById('paper-note-pinned').value==='yes';n.updatedAt=now;save();closeModal();renderWork();toast('笔记已保存');return;}
+ if(el.hasAttribute('data-paper-note-remove')){var i=+el.dataset.paperNoteRemove,p=S.paper.projects[i];if(confirm('确定删除这篇笔记？')){p.notesList=(p.notesList||[]).filter(function(x){return x.id!==el.dataset.noteId;});save();closeModal();renderWork();toast('笔记已删除');}}
+});
+document.addEventListener('input',function(e){var el=e.target;if(!el.hasAttribute('data-paper-note-search'))return;var i=+el.dataset.paperNoteSearch;paperNoteQuery[i]=el.value;var host=el.closest('.paper-notebook'),p=S.paper.projects[i];if(host&&p){var box=document.createElement('div');box.innerHTML=renderPaperNotebook(i,p);var next=box.firstElementChild;host.replaceWith(next);var input=next.querySelector('[data-paper-note-search]');if(input){input.focus();input.setSelectionRange(input.value.length,input.value.length);}}});
 document.addEventListener('click',function(e){
  var el=e.target.closest('[data-work-todo-add],[data-work-todo-delete]');if(!el)return;
  if(el.hasAttribute('data-work-todo-add')){

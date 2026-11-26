@@ -2314,7 +2314,8 @@ var paperNoteFilter={},paperNoteQuery={};
 function renderPaperNotebook(index,p){
  p.notesList=Array.isArray(p.notesList)?p.notesList:[];
  var notes=p.notesList.slice().sort(function(a,b){return Number(!!b.pinned)-Number(!!a.pinned)||String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});
- p.noteCategories=Array.isArray(p.noteCategories)&&p.noteCategories.length?p.noteCategories:['研究思路','证明过程','实验记录','待解决问题'];\n var cats=paperNoteCategoryList(p),active=paperNoteFilter[index]||'全部笔记',query=paperNoteQuery[index]||'';
+ p.noteCategories=Array.isArray(p.noteCategories)&&p.noteCategories.length?p.noteCategories:['研究思路','证明过程','实验记录','待解决问题'];
+ var cats=paperNoteCategoryList(p),active=paperNoteFilter[index]||'全部笔记',query=paperNoteQuery[index]||'';
  var filtered=notes.filter(function(n){return (active==='全部笔记'||n.category===active)&&((n.title||'')+' '+(n.body||'')).toLowerCase().indexOf(query.toLowerCase())>=0;});
  var pinned=filtered.filter(function(n){return n.pinned;}),others=filtered.filter(function(n){return !n.pinned;});
  function card(n){var preview=(n.body||'').replace(/\s+/g,' ').trim();return '<article class="paper-note-card" data-paper-note-edit="'+index+'" data-note-id="'+esc(n.id)+'"><div class="paper-note-main"><div class="paper-note-title">'+esc(n.title||'无标题笔记')+'</div><div class="paper-note-meta">'+esc(paperNoteDate(n))+' · '+esc(preview.slice(0,58)||'暂无正文')+'</div></div><span class="paper-note-category">'+esc(n.category||'未分类')+'</span>'+(n.pinned?'<span class="paper-note-pin">置顶</span>':'')+'</article>';}

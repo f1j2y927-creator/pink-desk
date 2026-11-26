@@ -2113,7 +2113,7 @@ function renderCalendarDetails(){
   var entries=Object.values((d.autoAreas||{})[a.id]||{}).sort(function(x,y){return x.time.localeCompare(y.time);});
   return '<section class="calendar-note record-editor"><h4>'+a.icon+' '+a.name+'</h4>'+
    '<div class="auto-summary">'+(entries.length?'<ul>'+entries.map(function(x){return '<li>'+esc(x.text)+'</li>';}).join('')+'</ul>':'<p class="panel-note">暂无自动记录。启用后在对应模块保存的操作会出现在这里。</p>')+'</div>'+
-   '<label class="field"><span>我的补充 / 感悟</span><textarea class="inp" rows="3" data-record-area="'+a.id+'" data-record-date="'+date+'" placeholder="自由补充你的感悟……">'+esc((d.areaNotes||{})[a.id]||'')+'</textarea></label></section>';
+   '</section>';
  }).join('');
  text+='<label class="calendar-note record-editor"><h4>🌷 个人状态总结</h4><textarea class="inp" rows="3" data-record-summary data-record-date="'+date+'" placeholder="记录个人状态与感受……">'+esc(d.personalSummary||'')+'</textarea></label><p class="panel-note" id="recordSaveStatus" aria-live="polite"></p>';
  if((d.tasks||[]).length)text+='<details><summary>原有待办记录</summary><ul>'+d.tasks.map(function(t){return '<li>'+esc((t.done?'✓ ':'○ ')+t.text)+'</li>';}).join('')+'</ul></details>';
